@@ -5,31 +5,31 @@
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Utils" href="utils.html" /><link rel="prev" title="Rasterization" href="rasterization.html" />
 
-    <!-- Generated with Sphinx 7.4.7 and Furo 2024.08.06 -->
+    <!-- Generated with Sphinx 7.4.7 and Furo 2025.07.19 -->
         <title>Densification - gsplat documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=354aac6f" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=302659d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=25af2a20" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     
     
 
 
 <style>
   body {
-    --color-code-background: #f8f8f8;
-  --color-code-foreground: black;
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
   
   }
   @media not print {
     body[data-theme="dark"] {
-      --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+      --color-code-background: #2b2b2b;
+  --color-code-foreground: #f8f8f2;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
-        --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+        --color-code-background: #2b2b2b;
+  --color-code-foreground: #f8f8f2;
   
       }
     }
@@ -322,7 +322,7 @@
 training into a strategy. A strategy is a class that defines how the Gaussian parameters
 (along with their optimizers) should be updated (splitting, pruning, etc.) during the training.</p>
 <p>An example of the training workflow using <a class="reference internal" href="#gsplat.DefaultStrategy" title="gsplat.DefaultStrategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">DefaultStrategy</span></code></a> is like:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">gsplat</span> <span class="kn">import</span> <span class="n">DefaultStrategy</span><span class="p">,</span> <span class="n">rasterization</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">gsplat</span><span class="w"> </span><span class="kn">import</span> <span class="n">DefaultStrategy</span><span class="p">,</span> <span class="n">rasterization</span>
 
 <span class="c1"># Define Gaussian parameters and optimizers</span>
 <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">]</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ParameterDict</span> <span class="o">=</span> <span class="o">...</span>
@@ -369,10 +369,10 @@ one learnable parameter.</p>
 <p>For example, the following is a valid format for the parameters and the optimizers
 that can be used with our strategies:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">N</span> <span class="o">=</span> <span class="mi">100</span>
-<span class="n">params</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ParameterDict</span><span class="p">{</span>
+<span class="n">params</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ParameterDict</span><span class="p">({</span>
     <span class="s2">&quot;means&quot;</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="s2">&quot;scales&quot;</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">N</span><span class="p">),</span> <span class="s2">&quot;quats&quot;</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="s2">&quot;opacities&quot;</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">N</span><span class="p">),</span>
     <span class="s2">&quot;colors&quot;</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="s2">&quot;features1&quot;</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span> <span class="s2">&quot;features2&quot;</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">64</span><span class="p">),</span>
-<span class="p">}</span>
+<span class="p">})</span>
 <span class="n">optimizers</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">([</span><span class="n">p</span><span class="p">],</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
 </pre></div>
 </div>
@@ -429,7 +429,7 @@ in variable “gradient_2dgs”.</p></li>
 </dd>
 </dl>
 <p class="rubric">Examples</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">gsplat</span> <span class="kn">import</span> <span class="n">DefaultStrategy</span><span class="p">,</span> <span class="n">rasterization</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">gsplat</span><span class="w"> </span><span class="kn">import</span> <span class="n">DefaultStrategy</span><span class="p">,</span> <span class="n">rasterization</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">]</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ParameterDict</span> <span class="o">=</span> <span class="o">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">optimizers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Optimizer</span><span class="p">]</span> <span class="o">=</span> <span class="o">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">strategy</span> <span class="o">=</span> <span class="n">DefaultStrategy</span><span class="p">()</span>
@@ -515,7 +515,7 @@ and optimizers is as expected.</p>
 </dd>
 </dl>
 <p class="rubric">Examples</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">gsplat</span> <span class="kn">import</span> <span class="n">MCMCStrategy</span><span class="p">,</span> <span class="n">rasterization</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">gsplat</span><span class="w"> </span><span class="kn">import</span> <span class="n">MCMCStrategy</span><span class="p">,</span> <span class="n">rasterization</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">]</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ParameterDict</span> <span class="o">=</span> <span class="o">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">optimizers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Optimizer</span><span class="p">]</span> <span class="o">=</span> <span class="o">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">strategy</span> <span class="o">=</span> <span class="n">MCMCStrategy</span><span class="p">()</span>
@@ -657,6 +657,6 @@ and optimizers is as expected.</p>
 </div><script src="../_static/documentation_options.js?v=5929fcd5"></script>
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
     </body>
 </html>
