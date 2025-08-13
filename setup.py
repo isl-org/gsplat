@@ -6,11 +6,35 @@ import platform
 import sys
 
 from setuptools import find_packages, setup
+import subprocess
 
 __version__ = None
 exec(open("gsplat/version.py", "r").read())
 
 URL = "https://github.com/nerfstudio-project/gsplat"
+
+has_cuda = False
+try:
+    import torch
+    has_cuda = torch.cuda.is_available()
+except ImportError:
+    pass
+
+has_xpu = False
+if not has_cuda: 
+    try:
+        import torch
+        has_xpu = torch.xpu.is_available()
+    except (ImportError, AttributeError):
+        pass 
+
+has_sycl_compiler = False
+if os.system('icpx --version > /dev/null 2>&1') == 0:
+    has_sycl_compiler = True
+elif os.system('dpcpp --version > /dev/null 2>&1') == 0:
+    has_sycl_compiler = True
+
+BUILD_SYCL = has_xpu and has_sycl_compiler
 
 BUILD_NO_CUDA = os.getenv("BUILD_NO_CUDA", "0") == "1"
 WITH_SYMBOLS = os.getenv("WITH_SYMBOLS", "0") == "1"
@@ -22,6 +46,30 @@ if not MAX_JOBS:
     os.environ["MAX_JOBS"] = "10"
     print(f"Setting MAX_JOBS to {os.environ['MAX_JOBS']}")
 
+
+from torch.utils.cpp_extension import BuildExtension
+
+class SyclBuildExtension(BuildExtension):
+    """
+    Custom build class to orchestrate a CMake build for the SYCL backend.
+    """
+    def run(self):
+        print("--- Running SYCL build via CMake ---")
+        sycl_dir = os.path.abspath("gsplat/sycl")
+        build_dir = os.path.join(self.build_temp, "sycl")
+        os.makedirs(build_dir, exist_ok=True)
+        jobs = os.getenv("MAX_JOBS", "10")
+
+        install_dir = os.path.abspath(self.build_lib)
+
+        subprocess.check_call(
+            ["cmake", f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={os.path.join(install_dir, 'gsplat')}", sycl_dir],
+            cwd=build_dir
+        )
+        subprocess.check_call(
+            ["cmake", "--build", ".", "--config", "Release", "--", f"-j{jobs}"],
+            cwd=build_dir
+        )
 
 def get_ext():
     from torch.utils.cpp_extension import BuildExtension
@@ -105,14 +153,29 @@ def get_extensions():
     return [extension]
 
 
+ext_modules = []
+cmdclass = {}
+packages_to_find = find_packages()
+from setuptools import Extension
+if BUILD_SYCL:
+    print("--- Configuring for SYCL build ---")
+    cmdclass = {"build_ext": SyclBuildExtension}
+    ext_modules.append(Extension("gsplat.gsplat_sycl_kernels", sources=[])) 
+elif not BUILD_NO_CUDA:
+    print("--- Configuring for CUDA build ---")
+    ext_modules = get_extensions()
+    cmdclass = {"build_ext": get_ext()}
+else:
+    print("--- Building without any C++/CUDA/SYCL extensions ---")
+
 setup(
     name="gsplat",
     version=__version__,
-    description=" Python package for differentiable rasterization of gaussians",
-    keywords="gaussian, splatting, cuda",
+    description="Python package for differentiable rasterization of gaussians",
+    keywords="gaussian, splatting, cuda, sycl",
     url=URL,
     download_url=f"{URL}/archive/gsplat-{__version__}.tar.gz",
-    python_requires=">=3.7",
+    python_requires=">=3.8", # Updated to match your CMake
     install_requires=[
         "ninja",
         "numpy",
@@ -122,7 +185,6 @@ setup(
         "typing_extensions; python_version<'3.8'",
     ],
     extras_require={
-        # dev dependencies. Install them by `pip install gsplat[dev]`
         "dev": [
             "black[jupyter]==22.3.0",
             "isort==5.10.1",
@@ -134,12 +196,14 @@ setup(
             "build",
             "twine",
         ],
+        "sycl": ["pybind11>=2.10"],
     },
-    ext_modules=get_extensions() if not BUILD_NO_CUDA else [],
-    cmdclass={"build_ext": get_ext()} if not BUILD_NO_CUDA else {},
-    packages=find_packages(),
-    # https://github.com/pypa/setuptools/issues/1461#issuecomment-954725244
+    ext_modules=ext_modules,
+    cmdclass=cmdclass,
+    packages=packages_to_find,
     include_package_data=True,
+
+    zip_safe=False,
 )
 
 if need_to_unset_max_jobs:

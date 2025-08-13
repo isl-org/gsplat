@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 import torch
 from torch import Tensor
 
-from gsplat.cuda._torch_impl import _quat_scale_to_matrix
+from ._torch_impl import _quat_scale_to_matrix
 
 
 def _fully_fused_projection_2dgs(
@@ -231,7 +231,7 @@ def _rasterize_to_pixels_2dgs(
         This function requires the `nerfacc` package to be installed. Please install it
         using the following command `pip install nerfacc`.
     """
-    from ._wrapper import rasterize_to_indices_in_range_2dgs
+    from .cuda._wrapper import rasterize_to_indices_in_range_2dgs
 
     image_dims = means2d.shape[:-2]
     channels = colors.shape[-1]

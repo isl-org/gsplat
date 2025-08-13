@@ -639,7 +639,7 @@ def _rasterize_to_pixels(
         This function requires the `nerfacc` package to be installed. Please install it
         using the following command `pip install nerfacc`.
     """
-    from ._wrapper import rasterize_to_indices_in_range
+    from .cuda._wrapper import rasterize_to_indices_in_range
 
     image_dims = means2d.shape[:-2]
     channels = colors.shape[-1]
