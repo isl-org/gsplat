@@ -9,7 +9,7 @@
 namespace gsplat::xpu {
 
 at::Tensor intersect_offset(
-    const at::Tensor& isect_ids, // [n_isects]
+    const at::Tensor isect_ids, // [n_isects]
     const uint32_t I,
     const uint32_t tile_width,
     const uint32_t tile_height

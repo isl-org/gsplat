@@ -8,11 +8,11 @@
 namespace gsplat::xpu {
 
 std::tuple<at::Tensor, at::Tensor, at::Tensor> intersect_tile(
-    const at::Tensor& means2d,      // [..., C, N, 2] or [nnz, 2]
-    const at::Tensor& radii,        // [..., C, N] or [nnz]
-    const at::Tensor& depths,       // [..., C, N] or [nnz]
-    const at::optional<at::Tensor>& image_ids,    // [nnz] -> maps to camera_ids
-    const at::optional<at::Tensor>& gaussian_ids, // [nnz]
+    const at::Tensor means2d,      // [..., C, N, 2] or [nnz, 2]
+    const at::Tensor radii,        // [..., C, N] or [nnz]
+    const at::Tensor depths,       // [..., C, N] or [nnz]
+    const at::optional<at::Tensor> image_ids,    // [nnz] -> maps to camera_ids
+    const at::optional<at::Tensor> gaussian_ids, // [nnz]
     const uint32_t I,               // -> maps to C
     const uint32_t tile_size,
     const uint32_t tile_width,

@@ -4,9 +4,8 @@ import os.path as osp
 import pathlib
 import platform
 import sys
-
 from setuptools import find_packages, setup
-import subprocess
+import subprocess as sp
 
 __version__ = None
 exec(open("gsplat/version.py", "r").read())
@@ -16,22 +15,26 @@ URL = "https://github.com/nerfstudio-project/gsplat"
 has_cuda = False
 try:
     import torch
+
     has_cuda = torch.cuda.is_available()
 except ImportError:
     pass
 
 has_xpu = False
-if not has_cuda: 
+if not has_cuda:
     try:
         import torch
+
         has_xpu = torch.xpu.is_available()
     except (ImportError, AttributeError):
-        pass 
+        pass
 
 has_sycl_compiler = False
-if os.system('icpx --version > /dev/null 2>&1') == 0:
-    has_sycl_compiler = True
-elif os.system('dpcpp --version > /dev/null 2>&1') == 0:
+if (
+    sp.run(["icpx", "--version"], stdout=sp.DEVNULL, stderr=sp.DEVNULL).returncode == 0
+) or (
+    sp.run(["dpcpp", "--version"], stdout=sp.DEVNULL, stderr=sp.DEVNULL).returncode == 0
+):
     has_sycl_compiler = True
 
 BUILD_SYCL = has_xpu and has_sycl_compiler
@@ -49,10 +52,12 @@ if not MAX_JOBS:
 
 from torch.utils.cpp_extension import BuildExtension
 
+
 class SyclBuildExtension(BuildExtension):
     """
     Custom build class to orchestrate a CMake build for the SYCL backend.
     """
+
     def run(self):
         print("--- Running SYCL build via CMake ---")
         sycl_dir = os.path.abspath("gsplat/sycl")
@@ -62,14 +67,22 @@ class SyclBuildExtension(BuildExtension):
 
         install_dir = os.path.abspath(self.build_lib)
 
-        subprocess.check_call(
-            ["cmake", f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={os.path.join(install_dir, 'gsplat')}", sycl_dir],
-            cwd=build_dir
+        sp.check_call(
+            [
+                "cmake",
+                "-G",
+                "Ninja",
+                "-DCMAKE_BUILD_TYPE=Release",
+                f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={os.path.join(install_dir, 'gsplat')}",
+                sycl_dir,
+            ],
+            cwd=build_dir,
         )
-        subprocess.check_call(
-            ["cmake", "--build", ".", "--config", "Release", "--", f"-j{jobs}"],
-            cwd=build_dir
+        sp.check_call(
+            ["cmake", "--build", ".", "--config", "Release", "--", "-v", f"-j{jobs}"],
+            cwd=build_dir,
         )
+
 
 def get_ext():
     from torch.utils.cpp_extension import BuildExtension
@@ -157,10 +170,11 @@ ext_modules = []
 cmdclass = {}
 packages_to_find = find_packages()
 from setuptools import Extension
+
 if BUILD_SYCL:
     print("--- Configuring for SYCL build ---")
     cmdclass = {"build_ext": SyclBuildExtension}
-    ext_modules.append(Extension("gsplat.gsplat_sycl_kernels", sources=[])) 
+    ext_modules.append(Extension("gsplat.gsplat_sycl_kernels", sources=[]))
 elif not BUILD_NO_CUDA:
     print("--- Configuring for CUDA build ---")
     ext_modules = get_extensions()
@@ -175,7 +189,7 @@ setup(
     keywords="gaussian, splatting, cuda, sycl",
     url=URL,
     download_url=f"{URL}/archive/gsplat-{__version__}.tar.gz",
-    python_requires=">=3.8", # Updated to match your CMake
+    python_requires=">=3.8",  # Updated to match your CMake
     install_requires=[
         "ninja",
         "numpy",
@@ -202,7 +216,6 @@ setup(
     cmdclass=cmdclass,
     packages=packages_to_find,
     include_package_data=True,
-
     zip_safe=False,
 )
 

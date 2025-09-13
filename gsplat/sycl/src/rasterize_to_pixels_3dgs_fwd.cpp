@@ -77,19 +77,19 @@ void launch_rasterize_kernel(
 
 std::tuple<at::Tensor, at::Tensor, at::Tensor> rasterize_to_pixels_3dgs_fwd(
     // Gaussian parameters
-    const at::Tensor& means2d,
-    const at::Tensor& conics,
-    const at::Tensor& colors,
-    const at::Tensor& opacities,
-    const at::optional<at::Tensor>& backgrounds,
-    const at::optional<at::Tensor>& masks,
+    const at::Tensor means2d,
+    const at::Tensor conics,
+    const at::Tensor colors,
+    const at::Tensor opacities,
+    const at::optional<at::Tensor> backgrounds,
+    const at::optional<at::Tensor> masks,
     // image size
     const uint32_t image_width,
     const uint32_t image_height,
     const uint32_t tile_size,
     // intersections
-    const at::Tensor& tile_offsets,
-    const at::Tensor& flatten_ids
+    const at::Tensor tile_offsets,
+    const at::Tensor flatten_ids
 ) {
     CHECK_CONTIGUOUS(means2d);
     CHECK_CONTIGUOUS(conics);

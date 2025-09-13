@@ -38,52 +38,53 @@ else()
   message(FATAL_ERROR "Could not find Torch via Python introspection. "
                       "Please ensure PyTorch is installed or set CMAKE_PREFIX_PATH/Torch_DIR manually.")
 endif()
+string(CONCAT TORCH_PYTHON_LIB_NAME ${CMAKE_SHARED_LIBRARY_PREFIX} "torch_python" ${CMAKE_SHARED_LIBRARY_SUFFIX})
 execute_process(
-  COMMAND "${Python_EXECUTABLE}" -c "import os; from torch.utils import cpp_extension; print(os.path.join(cpp_extension.library_paths(True)[0], 'libtorch_python.so'))"
+  COMMAND "${Python_EXECUTABLE}" -c "import os; from torch.utils import cpp_extension; print(os.path.join(cpp_extension.library_paths(True)[0], '${TORCH_PYTHON_LIB_NAME}'))"
   OUTPUT_STRIP_TRAILING_WHITESPACE
   OUTPUT_VARIABLE TORCH_PYTHON_LIB
 )
 
 if (NOT EXISTS "${TORCH_PYTHON_LIB}")
-    message(FATAL_ERROR "Could not find libtorch_python.so at ${TORCH_PYTHON_LIB}. Please check your PyTorch installation.")
+    message(FATAL_ERROR "Could not find ${TORCH_PYTHON_LIB_NAME} at ${TORCH_PYTHON_LIB}. Please check your PyTorch installation.")
 else()
     message(STATUS "Found torch_python library at: ${TORCH_PYTHON_LIB}")
 endif()
 
 
 set(PYBIND11_FINDPYTHON ON)
-find_package(pybind11 CONFIG REQUIRED)
+find_package(pybind11 CONFIG REQUIRED HINTS "${Python_SITELIB}/pybind11/share/cmake/pybind11")
 
-set( SYCL_SOURCES
-  ${CMAKE_CURRENT_SOURCE_DIR}/ext.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/adam.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/intersect_offset.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/intersect_tile.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/null.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/projection_2dgs_fused_bwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/projection_2dgs_fused_fwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/projection_2dgs_packed_bwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/projection_2dgs_packed_fwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/projection_ewa_3dgs_fused_bwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/projection_ewa_3dgs_fused_fwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/projection_ewa_3dgs_packed_bwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/projection_ewa_3dgs_packed_fwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/projection_ewa_simple_bwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/projection_ewa_simple_fwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/projection_ut_3dgs_fused.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/quat_scale_to_covar_preci_bwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/quat_scale_to_covar_preci_fwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/rasterize_to_indices_2dgs.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/rasterize_to_indices_3dgs.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/rasterize_to_pixels_2dgs_bwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/rasterize_to_pixels_2dgs_fwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/rasterize_to_pixels_3dgs_bwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/rasterize_to_pixels_3dgs_fwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/rasterize_to_pixels_from_world_3dgs_bwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/rasterize_to_pixels_from_world_3dgs_fwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/relocation.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/spherical_harmonics_bwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/spherical_harmonics_fwd.cpp
+set(SYCL_SOURCES
+  ext.cpp
+  src/adam.cpp
+  src/intersect_offset.cpp
+  src/intersect_tile.cpp
+  src/null.cpp
+  src/projection_2dgs_fused_bwd.cpp
+  src/projection_2dgs_fused_fwd.cpp
+  src/projection_2dgs_packed_bwd.cpp
+  src/projection_2dgs_packed_fwd.cpp
+  src/projection_ewa_3dgs_fused_bwd.cpp
+  src/projection_ewa_3dgs_fused_fwd.cpp
+  src/projection_ewa_3dgs_packed_bwd.cpp
+  src/projection_ewa_3dgs_packed_fwd.cpp
+  src/projection_ewa_simple_bwd.cpp
+  src/projection_ewa_simple_fwd.cpp
+  src/projection_ut_3dgs_fused.cpp
+  src/quat_scale_to_covar_preci_bwd.cpp
+  src/quat_scale_to_covar_preci_fwd.cpp
+  src/rasterize_to_indices_2dgs.cpp
+  src/rasterize_to_indices_3dgs.cpp
+  src/rasterize_to_pixels_2dgs_bwd.cpp
+  src/rasterize_to_pixels_2dgs_fwd.cpp
+  src/rasterize_to_pixels_3dgs_bwd.cpp
+  src/rasterize_to_pixels_3dgs_fwd.cpp
+  src/rasterize_to_pixels_from_world_3dgs_bwd.cpp
+  src/rasterize_to_pixels_from_world_3dgs_fwd.cpp
+  src/relocation.cpp
+  src/spherical_harmonics_bwd.cpp
+  src/spherical_harmonics_fwd.cpp
 )
 
 set(SYCL_MODULE_NAME gsplat_sycl_kernels)

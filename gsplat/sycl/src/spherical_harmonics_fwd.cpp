@@ -7,9 +7,9 @@ namespace  gsplat::xpu {
 
 at::Tensor spherical_harmonics_fwd(
     const uint32_t degrees_to_use,
-    const at::Tensor& dirs,               // [..., 3]
-    const at::Tensor& coeffs,             // [..., K, 3]
-    const at::optional<at::Tensor>& masks // [...]
+    const at::Tensor dirs,               // [..., 3]
+    const at::Tensor coeffs,             // [..., K, 3]
+    const at::optional<at::Tensor> masks // [...]
 ) {
     TORCH_CHECK(dirs.is_contiguous(), "Input 'dirs' tensor must be contiguous.");
     TORCH_CHECK(coeffs.is_contiguous(), "Input 'coeffs' tensor must be contiguous.");
