@@ -38,12 +38,27 @@ else()
   message(FATAL_ERROR "Could not find Torch via Python introspection. "
                       "Please ensure PyTorch is installed or set CMAKE_PREFIX_PATH/Torch_DIR manually.")
 endif()
-string(CONCAT TORCH_PYTHON_LIB_NAME ${CMAKE_SHARED_LIBRARY_PREFIX} "torch_python" ${CMAKE_LINK_LIBRARY_SUFFIX})
+
+string(CONCAT TORCH_PYTHON_LIB_NAME ${CMAKE_SHARED_LIBRARY_PREFIX} "torch_python" ${CMAKE_SHARED_LIBRARY_SUFFIX})
 execute_process(
   COMMAND "${Python_EXECUTABLE}" -c "import os; from torch.utils import cpp_extension; print(os.path.join(cpp_extension.library_paths(True)[0], '${TORCH_PYTHON_LIB_NAME}'))"
   OUTPUT_STRIP_TRAILING_WHITESPACE
   OUTPUT_VARIABLE TORCH_PYTHON_LIB
 )
+
+# Add a fallback to find the file if it exists with a different extension
+if (NOT EXISTS "${TORCH_PYTHON_LIB}")
+    execute_process(
+      COMMAND "${Python_EXECUTABLE}" -c "import os, glob; from torch.utils import cpp_extension; base_path = os.path.join(cpp_extension.library_paths(True)[0], '${CMAKE_SHARED_LIBRARY_PREFIX}torch_python'); matches = glob.glob(base_path + '.*'); print(matches[0] if matches else '')"
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      OUTPUT_VARIABLE TORCH_PYTHON_LIB_FALLBACK
+    )
+    if (EXISTS "${TORCH_PYTHON_LIB_FALLBACK}")
+        set(TORCH_PYTHON_LIB "${TORCH_PYTHON_LIB_FALLBACK}")
+        message(STATUS "Found torch_python library using fallback: ${TORCH_PYTHON_LIB}")
+    endif()
+endif()
+
 
 if (NOT EXISTS "${TORCH_PYTHON_LIB}")
     message(FATAL_ERROR "Could not find ${TORCH_PYTHON_LIB_NAME} at ${TORCH_PYTHON_LIB}. Please check your PyTorch installation.")
