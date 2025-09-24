@@ -38,7 +38,7 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor> intersect_tile(
         TORCH_CHECK((image_ids.has_value()) && (gaussian_ids.has_value()),
                     "When segmented (packed) is set, image_ids and gaussian_ids must be provided.");
     } else {
-        N = means2d.size(1);
+        N = means2d.size(-2);
         total_elems = C * N;
     }
 
@@ -49,8 +49,8 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor> intersect_tile(
             at::empty({0}, at::kInt)
         );
     }
-
-    at::Tensor tiles_per_gauss = at::empty_like(depths, depths.options().dtype(at::kInt));
+    auto options = depths.options();
+    at::Tensor tiles_per_gauss = at::empty_like(depths, options.dtype(at::kInt));
     const uint32_t n_tiles = tile_width * tile_height;
     const uint32_t tile_n_bits = (uint32_t)floor(log2(n_tiles)) + 1;
     const uint32_t cam_n_bits = (uint32_t)floor(log2(C)) + 1;
@@ -86,8 +86,8 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor> intersect_tile(
         n_isects = cum_tiles_per_gauss.slice(0, -1).item<int64_t>();
     }
 
-    at::Tensor isect_ids = at::empty({n_isects}, at::kLong);
-    at::Tensor flatten_ids = at::empty({n_isects}, at::kInt);
+    at::Tensor isect_ids = at::empty({n_isects}, options.dtype(at::kLong));
+    at::Tensor flatten_ids = at::empty({n_isects}, options.dtype(at::kInt));
     
     if (n_isects > 0) {
         auto e2 = d_queue.submit([&](sycl::handler& cgh) {

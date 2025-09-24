@@ -80,8 +80,9 @@ struct IsectTilesKernel {
             return;
         }
 
-        const T radius = m_radii[idx];
-        if (radius <= 0) {
+        const T radius_x = m_radii[idx * 2];
+        const T radius_y = m_radii[idx * 2 + 1];
+        if (radius_x <= 0 || radius_y <= 0) {
             if (first_pass) {
                 m_tiles_per_gauss[idx] = 0;
             }
@@ -90,16 +91,17 @@ struct IsectTilesKernel {
 
         vec2<T> mean2d = glm::make_vec2(m_means2d + 2 * idx);
 
-        T tile_radius = radius / static_cast<T>(m_tile_size);
+        T tile_radius_x = radius_x / static_cast<T>(m_tile_size);
+        T tile_radius_y = radius_y / static_cast<T>(m_tile_size);
         T tile_x = mean2d.x / static_cast<T>(m_tile_size);
         T tile_y = mean2d.y / static_cast<T>(m_tile_size);
 
         uint2 tile_min, tile_max;
-        tile_min.x = sycl::min( sycl::max((uint32_t)0, (uint32_t)sycl::floor(tile_x - tile_radius)), m_tile_width);
-        tile_min.y = sycl::min( sycl::max((uint32_t)0, (uint32_t)sycl::floor(tile_y - tile_radius)), m_tile_height);
-
-        tile_max.x = sycl::min( sycl::max((uint32_t)0, (uint32_t)sycl::ceil(tile_x + tile_radius)), m_tile_width);
-        tile_max.y = sycl::min( sycl::max((uint32_t)0, (uint32_t)sycl::ceil(tile_y + tile_radius)), m_tile_height);
+        // Use the separate x and y tile radii to calculate the bounding box.
+        tile_min.x = sycl::min(sycl::max((uint32_t)0, (uint32_t)sycl::floor(tile_x - tile_radius_x)), m_tile_width);
+        tile_min.y = sycl::min(sycl::max((uint32_t)0, (uint32_t)sycl::floor(tile_y - tile_radius_y)), m_tile_height);
+        tile_max.x = sycl::min(sycl::max((uint32_t)0, (uint32_t)sycl::ceil(tile_x + tile_radius_x)), m_tile_width);
+        tile_max.y = sycl::min(sycl::max((uint32_t)0, (uint32_t)sycl::ceil(tile_y + tile_radius_y)), m_tile_height);
 
         if (first_pass) {
             // first pass only writes out tiles_per_gauss
@@ -122,7 +124,9 @@ struct IsectTilesKernel {
 
         const int64_t cid_enc = cid << (32 + m_tile_n_bits);
 
-        int64_t depth_id_enc = (int64_t) * (int32_t *)&(m_depths[idx]);
+        int32_t depth_i32 = *reinterpret_cast<const int32_t*>(&m_depths[idx]);
+        int64_t depth_id_enc = static_cast<uint32_t>(depth_i32);
+        
         int64_t cur_idx = (idx == 0) ? 0 : m_cum_tiles_per_gauss[idx - 1];
         for (int32_t i = tile_min.y; i < tile_max.y; ++i) {
             for (int32_t j = tile_min.x; j < tile_max.x; ++j) {
