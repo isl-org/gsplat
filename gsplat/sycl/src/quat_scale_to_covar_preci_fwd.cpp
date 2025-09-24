@@ -16,19 +16,29 @@ std::tuple<at::Tensor, at::Tensor> quat_scale_to_covar_preci_fwd(
     CHECK_CONTIGUOUS(scales);
     TORCH_CHECK(compute_covar || compute_preci, "Must compute at least one of covar or preci");
 
-    const int64_t N = quats.size(0);
+    const int64_t N = quats.numel() / 4;
     auto options = quats.options();
 
     at::Tensor covars;
+    at::Tensor precis;
+
+    // Create an output shape that preserves the batch dimensions from the input
+    at::DimVector out_shape(quats.sizes().slice(0, quats.dim() - 1));
+    if (triu) {
+        out_shape.push_back(6);
+    } else {
+        out_shape.push_back(3);
+        out_shape.push_back(3);
+    }
+
     if (compute_covar) {
-        covars = triu ? at::empty({N, 6}, options) : at::empty({N, 3, 3}, options);
+        covars = at::empty(out_shape, options);
     } else {
         covars = at::empty({0}, options);
     }
 
-    at::Tensor precis;
     if (compute_preci) {
-        precis = triu ? at::empty({N, 6}, options) : at::empty({N, 3, 3}, options);
+        precis = at::empty(out_shape, options);
     } else {
         precis = at::empty({0}, options);
     }

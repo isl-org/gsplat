@@ -22,7 +22,7 @@ std::tuple<at::Tensor, at::Tensor> quat_scale_to_covar_preci_bwd(
     }
     TORCH_CHECK(v_covars.has_value() || v_precis.has_value(), "Must provide gradients for at least one of covars or precis");
 
-    const int64_t N = quats.size(0);
+    const int64_t N = quats.numel() / 4;
     at::Tensor v_quats = at::empty_like(quats);
     at::Tensor v_scales = at::empty_like(scales);
 
