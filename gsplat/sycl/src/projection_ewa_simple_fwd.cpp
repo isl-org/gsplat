@@ -23,15 +23,24 @@ std::tuple<at::Tensor, at::Tensor> projection_ewa_simple_fwd(
 
     const uint32_t C = means.size(-3);
     const uint32_t N = means.size(-2);
+    const uint32_t total_gaussians = means.numel() / 3;
 
-    at::Tensor means2d = at::empty({C, N, 2}, means.options());
-    at::Tensor covars2d = at::empty({C, N, 2, 2}, covars.options());
+    auto options = means.options();
+    at::DimVector batch_dims(means.sizes().slice(0, means.dim() - 3));
 
-    if (C > 0 && N > 0) {
+    at::DimVector means2d_shape = batch_dims;
+    means2d_shape.insert(means2d_shape.end(), {C, N, 2});
+    at::Tensor means2d = at::empty(means2d_shape, options);
+
+    at::DimVector covars2d_shape = batch_dims;
+    covars2d_shape.insert(covars2d_shape.end(), {C, N, 2, 2});
+    at::Tensor covars2d = at::empty(covars2d_shape, covars.options());
+
+    if (total_gaussians > 0) {
         auto& d_queue = at::xpu::getCurrentXPUStream().queue();
+    
+        size_t numWorkGrps = (total_gaussians + GSPLAT_N_THREADS - 1) / GSPLAT_N_THREADS;
         
-        
-        size_t numWorkGrps = (C * N + GSPLAT_N_THREADS - 1) / GSPLAT_N_THREADS;
         sycl::range<1> localRange(GSPLAT_N_THREADS);
         sycl::range<1> globalRange(GSPLAT_N_THREADS * numWorkGrps);
         sycl::nd_range<1> range(globalRange, localRange);

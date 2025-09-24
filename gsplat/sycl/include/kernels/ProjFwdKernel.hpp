@@ -40,14 +40,18 @@ struct ProjFwdKernel{
 
     void operator()(sycl::nd_item<1> work_item) const {
         uint32_t idx = work_item.get_global_id(0);
-        if (idx >= m_C * m_N) {
+        const uint32_t total_gaussians = (work_item.get_group_range(0) * work_item.get_local_range(0));
+        if (idx >= total_gaussians) {
             return;
         }
-        const uint32_t cid = idx / m_N; // camera id
 
+        const uint32_t bid = idx / (m_C * m_N); // batch id
+        const uint32_t cid = (idx / m_N) % m_C; // camera id
+        
         const T* means = m_means + (idx * 3);
         const T* covars = m_covars + (idx * 9);
-        const T* Ks = m_Ks + (cid * 9);
+        const T* Ks = m_Ks + (bid * m_C * 9) + (cid * 9);
+
         T* means2d = m_means2d + (idx * 2);
         T* covars2d = m_covars2d + (idx * 4);
         

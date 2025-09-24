@@ -26,17 +26,17 @@ std::tuple<at::Tensor, at::Tensor> projection_ewa_simple_bwd(
 
     const uint32_t C = means.size(-3);
     const uint32_t N = means.size(-2);
+    const uint32_t total_gaussians = means.numel() / 3;
+
+    at::Tensor v_means = at::empty_like(means);
+    at::Tensor v_covars = at::empty_like(covars);
 
 
-    at::Tensor v_means = at::empty({C, N, 3}, means.options());
-    at::Tensor v_covars = at::empty({C, N, 3, 3}, covars.options());
-
-
-    if (C > 0 && N > 0) {
+    if (total_gaussians > 0) {
         auto& d_queue = at::xpu::getCurrentXPUStream().queue();
         
+        size_t numWorkGrps = (total_gaussians + GSPLAT_N_THREADS - 1) / GSPLAT_N_THREADS;
         
-        size_t numWorkGrps = (C * N + GSPLAT_N_THREADS - 1) / GSPLAT_N_THREADS;
         sycl::range<1> localRange(GSPLAT_N_THREADS);
         sycl::range<1> globalRange(GSPLAT_N_THREADS * numWorkGrps);
         sycl::nd_range<1> range(globalRange, localRange);
