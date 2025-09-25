@@ -28,5 +28,5 @@ enum CameraModelType {
 };
 
 #define GSPLAT_N_THREADS 256
-
+#define N_THREADS_PACKED 256
 } // namespace  gsplat::xpu
