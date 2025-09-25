@@ -7,20 +7,40 @@ import torch.nn.functional as F
 from torch import Tensor
 from typing_extensions import Literal
 
-from .cuda._wrapper import (
-    RollingShutterType,
-    FThetaCameraDistortionParameters,
-    FThetaPolynomialType,
-    fully_fused_projection,
-    fully_fused_projection_2dgs,
-    fully_fused_projection_with_ut,
-    isect_offset_encode,
-    isect_tiles,
-    rasterize_to_pixels,
-    rasterize_to_pixels_2dgs,
-    rasterize_to_pixels_eval3d,
-    spherical_harmonics,
-)
+from . import BACKEND
+
+# Now, conditionally import the functions based on the detected backend.
+if BACKEND == "cuda":
+    from .cuda._wrapper import (
+        RollingShutterType,
+        fully_fused_projection,
+        fully_fused_projection_2dgs,
+        fully_fused_projection_with_ut,
+        isect_offset_encode,
+        isect_tiles,
+        rasterize_to_pixels,
+        rasterize_to_pixels_2dgs,
+        rasterize_to_pixels_eval3d,
+        spherical_harmonics,
+    )
+elif BACKEND == "sycl":
+    from .sycl._wrapper import (
+        RollingShutterType,
+        fully_fused_projection,
+        fully_fused_projection_2dgs,
+        fully_fused_projection_with_ut,
+        isect_offset_encode,
+        isect_tiles,
+        rasterize_to_pixels,
+        rasterize_to_pixels_2dgs,
+        rasterize_to_pixels_eval3d,
+        spherical_harmonics,
+    )
+else:
+    # If no backend is found, you can either raise an error or define dummy functions
+    # to avoid crashing, depending on your needs.
+    raise ImportError("gsplat: No backend (CUDA or SYCL) found, cannot import backend-specific functions.")
+
 from .distributed import (
     all_gather_int32,
     all_gather_tensor_list,
@@ -63,7 +83,7 @@ def rasterization(
     radial_coeffs: Optional[Tensor] = None,  # [..., C, 6] or [..., C, 4]
     tangential_coeffs: Optional[Tensor] = None,  # [..., C, 2]
     thin_prism_coeffs: Optional[Tensor] = None,  # [..., C, 4]
-    ftheta_coeffs: Optional[FThetaCameraDistortionParameters] = None,
+    ftheta_coeffs  = None,
     # rolling shutter
     rolling_shutter: RollingShutterType = RollingShutterType.GLOBAL,
     viewmats_rs: Optional[Tensor] = None,  # [..., C, 4, 4]

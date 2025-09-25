@@ -6,6 +6,14 @@ import torch.distributed as dist
 import torch.distributed.nn.functional as distF
 from torch import Tensor
 
+import gsplat
+
+
+def _get_distributed_backend():
+    if gsplat.BACKEND == "sycl":
+        return "ccl"
+    return "nccl"
+
 
 def all_gather_int32(
     world_size: int, value: Union[int, Tensor], device: Optional[torch.device] = None
@@ -30,13 +38,17 @@ def all_gather_int32(
     if world_size == 1:
         return [value]
 
-    # move to CUDA
+    # move to device
     if isinstance(value, int):
         assert device is not None, "device is required for scalar input"
         value_tensor = torch.tensor(value, dtype=torch.int, device=device)
     else:
         value_tensor = value
-    assert value_tensor.is_cuda, "value should be on CUDA"
+    
+    if gsplat.BACKEND == "cuda":
+        assert value_tensor.is_cuda, "value should be on CUDA"
+    elif gsplat.BACKEND == "sycl":
+        assert value_tensor.is_xpu, "value should be on XPU"
 
     # gather
     collected = torch.empty(
@@ -82,7 +94,7 @@ def all_to_all_int32(
     if any(isinstance(v, int) for v in values):
         assert device is not None, "device is required for scalar input"
 
-    # move to CUDA
+    # move to device
     values_tensor = [
         (torch.tensor(v, dtype=torch.int, device=device) if isinstance(v, int) else v)
         for v in values
@@ -283,9 +295,15 @@ def _distributed_worker(
         print("Distributed worker: %d / %d" % (world_rank + 1, world_size))
     distributed = world_size > 1
     if distributed:
-        torch.cuda.set_device(local_rank)
+        if gsplat.BACKEND == "cuda":
+            torch.cuda.set_device(local_rank)
+        elif gsplat.BACKEND == "sycl":
+            import torch_ccl
+            import torch.xpu
+            torch.xpu.set_device(local_rank)
+
         torch.distributed.init_process_group(
-            backend="nccl", world_size=world_size, rank=world_rank
+            backend=_get_distributed_backend(), world_size=world_size, rank=world_rank
         )
         # Dump collection that participates all ranks.
         # This initializes the communicator required by `batch_isend_irecv`.
@@ -319,7 +337,12 @@ def cli(fn: Callable, args: Any, verbose: bool = False) -> bool:
         cli(fn, None, verbose=True)
     ```
     """
-    assert torch.cuda.is_available(), "CUDA device is required!"
+    if gsplat.BACKEND == "cuda":
+        assert torch.cuda.is_available(), "CUDA device is required!"
+    elif gsplat.BACKEND == "sycl":
+        import torch.xpu
+        assert torch.xpu.is_available(), "XPU device is required!"
+
     if "OMPI_COMM_WORLD_SIZE" in os.environ:  # multi-node
         local_rank = int(os.environ["OMPI_COMM_WORLD_LOCAL_RANK"])
         world_size = int(os.environ["OMPI_COMM_WORLD_SIZE"])  # dist.get_world_size()
@@ -328,7 +351,13 @@ def cli(fn: Callable, args: Any, verbose: bool = False) -> bool:
             world_rank, world_size, fn, args, local_rank, verbose
         )
 
-    world_size = torch.cuda.device_count()
+    if gsplat.BACKEND == "cuda":
+        world_size = torch.cuda.device_count()
+    elif gsplat.BACKEND == "sycl":
+        world_size = torch.xpu.device_count()
+    else:
+        world_size = 1
+
     distributed = world_size > 1
 
     if distributed:
