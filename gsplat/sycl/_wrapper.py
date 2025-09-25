@@ -1607,7 +1607,6 @@ class _FullyFusedProjectionPacked(torch.autograd.Function):
         )
 
         (
-            indptr,
             batch_ids,
             camera_ids,
             gaussian_ids,
@@ -1615,6 +1614,7 @@ class _FullyFusedProjectionPacked(torch.autograd.Function):
             means2d,
             depths,
             conics,
+            indptr,
             compensations,
         ) = _make_lazy_sycl_func("projection_ewa_3dgs_packed_fwd")(
             means,

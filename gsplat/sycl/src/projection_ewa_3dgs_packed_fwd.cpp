@@ -68,8 +68,8 @@ projection_ewa_3dgs_packed_fwd(
     }
     
     // --- Start of Correction ---
-    // Changed block_cnts to kLong to satisfy at::cumsum requirements
-    at::Tensor block_cnts = at::empty({(long)n_blocks}, long_opts);
+    // Allocate block_cnts as kInt, which the kernel expects.
+    at::Tensor block_cnts = at::empty({(long)n_blocks}, int_opts);
     // --- End of Correction ---
 
     auto& d_queue = at::xpu::getCurrentXPUStream().queue();
@@ -93,17 +93,19 @@ projection_ewa_3dgs_packed_fwd(
             camera_model,
             nullptr, // block_accum
             // --- Start of Correction ---
-            // The kernel expects int32_t*, but the tensor is int64_t.
-            // This cast is safe because the counts per block will not exceed int32_t max.
-            (int32_t*)block_cnts.data_ptr<int64_t>(),
+            // Pass the int32_t pointer directly, no cast needed.
+            block_cnts.data_ptr<int32_t>(),
             // --- End of Correction ---
             nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
         )).wait();
     });
 
-    at::Tensor block_accum_inclusive = at::cumsum(block_cnts, 0);
+    // --- Start of Correction ---
+    // Perform inclusive scan on a kLong version of block_cnts to prevent overflow.
+    at::Tensor block_accum_inclusive = at::cumsum(block_cnts.to(at::kLong), 0);
+    // --- End of Correction ---
     
-    int64_t nnz = 0; // Use int64_t for nnz to match tensor type
+    int64_t nnz = 0;
     if (n_blocks > 0) {
        nnz = block_accum_inclusive.index({-1}).item<int64_t>();
     }
@@ -113,13 +115,8 @@ projection_ewa_3dgs_packed_fwd(
             batch_ids, camera_ids, gaussian_ids, radii, means2d, depths, conics, indptr, compensations);
     }
     
-    // --- Start of Correction ---
-    // To get an exclusive scan, shift the inclusive scan and prepend a zero.
-    // Ensure the types are consistent (kLong).
     at::Tensor block_accum_exclusive = at::cat({at::zeros({1}, long_opts), block_accum_inclusive.slice(0, 0, n_blocks - 1)});
-    // The kernel expects int32_t*, so we must convert the exclusive scan result back to kInt.
     at::Tensor block_accum_exclusive_int = block_accum_exclusive.to(at::kInt);
-    // --- End of Correction ---
 
 
     // Allocate final output tensors
@@ -148,9 +145,7 @@ projection_ewa_3dgs_packed_fwd(
             image_width, image_height,
             (scalar_t)eps2d, (scalar_t)near_plane, (scalar_t)far_plane, (scalar_t)radius_clip,
             camera_model,
-            // --- Start of Correction ---
             block_accum_exclusive_int.data_ptr<int32_t>(),
-            // --- End of Correction ---
             nullptr, // block_cnts
             indptr.data_ptr<int32_t>(),
             batch_ids.data_ptr<int64_t>(),
