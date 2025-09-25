@@ -162,7 +162,7 @@ struct PackedProjectionFwdKernel {
                 if (opacity < ALPHA_THRESHOLD) {
                     valid = false;
                 }
-                extend = sycl::min(extend, sycl::sqrt(2.0f * sycl::log(opacity / ALPHA_THRESHOLD)));
+                extend = sycl::fmin(extend, sycl::sqrt(2.0f * sycl::log(opacity / ALPHA_THRESHOLD)));
             }
 
             radius_x = sycl::ceil(extend * sycl::sqrt(covar2d[0][0]));
@@ -183,7 +183,6 @@ struct PackedProjectionFwdKernel {
 
         if (m_block_cnts != nullptr) {
             // First pass: Count visible Gaussians in this block.
-            // Check if any thread in the group has a valid Gaussian.
             bool any_valid = sycl::any_of_group(group, valid);
             if (any_valid) {
                 // Reduce the count of valid Gaussians across the work-group.
