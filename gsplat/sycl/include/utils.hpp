@@ -40,7 +40,7 @@ inline T add_blur(const T eps2d, mat2<T> &covar, T &compensation) {
     covar[0][0] += eps2d;
     covar[1][1] += eps2d;
     T det_blur = covar[0][0] * covar[1][1] - covar[0][1] * covar[1][0];
-    compensation = sycl::sqrt(sycl::max(0.f, det_orig / det_blur));
+    compensation = sycl::sqrt(sycl::max(static_cast<T>(0), det_orig / det_blur));
     return det_blur;
 }
 
