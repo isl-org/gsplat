@@ -29,6 +29,7 @@ from utils import (
     rgb_to_sh,
     set_random_seed,
 )
+from gsplat import torch_acc
 from gsplat_viewer_2dgs import GsplatViewer, GsplatRenderTabState
 from gsplat.rendering import rasterization_2dgs, rasterization_2dgs_inria_wrapper
 from gsplat.strategy import DefaultStrategy
@@ -194,7 +195,7 @@ def create_splats_with_optimizers(
     sparse_grad: bool = False,
     batch_size: int = 1,
     feature_dim: Optional[int] = None,
-    device: str = "cuda",
+    device: str = torch_acc._device(0).type,
 ) -> Tuple[torch.nn.ParameterDict, Dict[str, torch.optim.Optimizer]]:
     if init_type == "sfm":
         points = torch.from_numpy(parser.points).float()
@@ -257,7 +258,7 @@ class Runner:
         set_random_seed(42)
 
         self.cfg = cfg
-        self.device = "cuda"
+        self.device = torch_acc._device(0).type
 
         # Where to dump results.
         os.makedirs(cfg.result_dir, exist_ok=True)
@@ -650,7 +651,7 @@ class Runner:
             pbar.set_description(desc)
 
             if cfg.tb_every > 0 and step % cfg.tb_every == 0:
-                mem = torch.cuda.max_memory_allocated() / 1024**3
+                mem = torch_acc.max_memory_allocated() / 1024**3
                 self.writer.add_scalar("train/loss", loss.item(), step)
                 self.writer.add_scalar("train/l1loss", l1loss.item(), step)
                 self.writer.add_scalar("train/ssimloss", ssimloss.item(), step)
@@ -712,7 +713,7 @@ class Runner:
 
             # save checkpoint
             if step in [i - 1 for i in cfg.save_steps] or step == max_steps - 1:
-                mem = torch.cuda.max_memory_allocated() / 1024**3
+                mem = torch_acc.max_memory_allocated() / 1024**3
                 stats = {
                     "mem": mem,
                     "ellipse_time": time.time() - global_tic,
@@ -765,7 +766,7 @@ class Runner:
             pixels = data["image"].to(device) / 255.0
             height, width = pixels.shape[1:3]
 
-            torch.cuda.synchronize()
+            torch_acc.synchronize()
             tic = time.time()
             (
                 colors,
@@ -787,7 +788,7 @@ class Runner:
             )  # [1, H, W, 3]
             colors = torch.clamp(colors, 0.0, 1.0)
             colors = colors[..., :3]  # Take RGB channels
-            torch.cuda.synchronize()
+            torch_acc.synchronize()
             ellipse_time += max(time.time() - tic, 1e-10)
 
             # write images

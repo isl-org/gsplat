@@ -7,6 +7,7 @@ import torch.distributed.nn.functional as distF
 from torch import Tensor
 
 import gsplat
+from gsplat import torch_acc
 
 
 def _get_distributed_backend():
@@ -295,12 +296,7 @@ def _distributed_worker(
         print("Distributed worker: %d / %d" % (world_rank + 1, world_size))
     distributed = world_size > 1
     if distributed:
-        if gsplat.BACKEND == "cuda":
-            torch.cuda.set_device(local_rank)
-        elif gsplat.BACKEND == "sycl":
-            import torch_ccl
-            import torch.xpu
-            torch.xpu.set_device(local_rank)
+        torch_acc.set_device(local_rank)
 
         torch.distributed.init_process_group(
             backend=_get_distributed_backend(), world_size=world_size, rank=world_rank
@@ -351,13 +347,8 @@ def cli(fn: Callable, args: Any, verbose: bool = False) -> bool:
             world_rank, world_size, fn, args, local_rank, verbose
         )
 
-    if gsplat.BACKEND == "cuda":
-        world_size = torch.cuda.device_count()
-    elif gsplat.BACKEND == "sycl":
-        world_size = torch.xpu.device_count()
-    else:
-        world_size = 1
 
+    world_size = torch_acc.device_count()
     distributed = world_size > 1
 
     if distributed:

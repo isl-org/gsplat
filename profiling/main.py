@@ -11,6 +11,7 @@ import time
 import torch
 from typing_extensions import Callable, Literal
 
+from gsplat import torch_acc, BACKEND 
 from gsplat._helper import load_test_data
 from gsplat.distributed import cli
 from gsplat.rendering import rasterization
@@ -22,17 +23,17 @@ RESOLUTIONS = {
     "4k": (3840, 2160),
 }
 
-device = torch.device("cuda")
+device = torch_acc._device(0)
 
 
 def timeit(repeats: int, f: Callable, *args, **kwargs) -> float:
     for _ in range(5):  # warmup
         f(*args, **kwargs)
-    torch.cuda.synchronize()
+    torch_acc.synchronize()
     start = time.time()
     for _ in range(repeats):
         results = f(*args, **kwargs)
-    torch.cuda.synchronize()
+    torch_acc.synchronize()
     end = time.time()
     return (end - start) / repeats, results
 
@@ -86,8 +87,8 @@ def main(
     Ks[..., 0, :] *= render_width / width
     Ks[..., 1, :] *= render_height / height
 
-    torch.cuda.reset_peak_memory_stats()
-    mem_tic = torch.cuda.max_memory_allocated() / 1024**3
+    torch_acc.reset_peak_memory_stats()
+    mem_tic = torch_acc.max_memory_allocated() / 1024**3
 
     if memory_history:
         torch.cuda.memory._record_memory_history()
@@ -120,7 +121,7 @@ def main(
         sparse_grad=sparse_grad,
         distributed=world_size > 1,
     )
-    mem_toc_fwd = torch.cuda.max_memory_allocated() / 1024**3 - mem_tic
+    mem_toc_fwd = torch_acc.max_memory_allocated() / 1024**3 - mem_tic
 
     render_colors = outputs[0]
     loss = render_colors.sum()
@@ -131,7 +132,7 @@ def main(
             v.grad = None
 
     ellipse_time_bwd, _ = timeit(repeats, backward)
-    mem_toc_all = torch.cuda.max_memory_allocated() / 1024**3 - mem_tic
+    mem_toc_all = torch_acc.max_memory_allocated() / 1024**3 - mem_tic
     print(
         f"Rasterization Mem Allocation: [FWD]{mem_toc_fwd:.2f} GB, [All]{mem_toc_all:.2f} GB "
         f"Time: [FWD]{ellipse_time_fwd:.3f}s, [BWD]{ellipse_time_bwd:.3f}s "
@@ -194,7 +195,7 @@ def worker(local_rank: int, world_rank: int, world_size: int, args):
                             f"{1.0 / stats['time_bwd']:0.1f} x {(batch_size)}",
                         ]
                     )
-                    torch.cuda.empty_cache()
+                    torch_acc.empty_cache()
 
                 print("gsplat packed[True] sparse_grad[False]")
                 for scene_grid in args.scene_grid:
@@ -225,7 +226,7 @@ def worker(local_rank: int, world_rank: int, world_size: int, args):
                             f"{1.0 / stats['time_bwd']:0.1f} x {(batch_size)}",
                         ]
                     )
-                    torch.cuda.empty_cache()
+                    torch_acc.empty_cache()
 
                 print("gsplat packed[False] sparse_grad[False]")
                 for scene_grid in args.scene_grid:
@@ -256,7 +257,7 @@ def worker(local_rank: int, world_rank: int, world_size: int, args):
                             f"{1.0 / stats['time_bwd']:0.1f} x {(batch_size)}",
                         ]
                     )
-                    torch.cuda.empty_cache()
+                    torch_acc.empty_cache()
 
             if "inria" in args.backends:
                 print("inria")
@@ -285,7 +286,7 @@ def worker(local_rank: int, world_rank: int, world_size: int, args):
                             f"{1.0 / stats['time_bwd']:0.1f} x {(batch_size)}",
                         ]
                     )
-                    torch.cuda.empty_cache()
+                    torch_acc.empty_cache()
 
     if world_rank == 0:
         headers = [
@@ -366,5 +367,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.memory_history:
         args.repeats = 1  # only run once for memory history
+        if BACKEND != "cuda":
+            raise ValueError("Memory history is only supported for CUDA backend.")
 
     cli(worker, args, verbose=True)

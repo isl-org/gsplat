@@ -4,6 +4,7 @@ from functools import wraps
 from typing import Callable, Optional
 
 import torch
+from gsplat import torch_acc
 
 profiler = {}
 
@@ -36,12 +37,12 @@ class timeit(object):
 
     def __enter__(self):
         if self.enabled:
-            torch.cuda.synchronize()
+            torch_acc.synchronize()
             self.start_time = time.perf_counter()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.enabled:
-            torch.cuda.synchronize()
+            torch_acc.synchronize()
             end_time = time.perf_counter()
             total_time = end_time - self.start_time
             if self.name not in profiler:

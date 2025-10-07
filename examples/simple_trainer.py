@@ -30,7 +30,7 @@ from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 from typing_extensions import Literal, assert_never
 from utils import AppearanceOptModule, CameraOptModule, knn, rgb_to_sh, set_random_seed
 
-from gsplat import export_splats
+from gsplat import export_splats, torch_acc
 from gsplat.compression import PngCompression
 from gsplat.distributed import cli
 from gsplat.optimizers import SelectiveAdam
@@ -227,7 +227,7 @@ def create_splats_with_optimizers(
     visible_adam: bool = False,
     batch_size: int = 1,
     feature_dim: Optional[int] = None,
-    device: str = "xpu" if torch.xpu.is_available() else "cuda" ,
+    device: str = torch_acc._device(0).type,
     world_rank: int = 0,
     world_size: int = 1,
 ) -> Tuple[torch.nn.ParameterDict, Dict[str, torch.optim.Optimizer]]:
@@ -312,7 +312,7 @@ class Runner:
         self.world_rank = world_rank
         self.local_rank = local_rank
         self.world_size = world_size
-        self.device = f"xpu:{local_rank}" if torch.xpu.is_available() else f"cuda:{local_rank}"
+        self.device = str(torch_acc._device(local_rank))
 
         # Where to dump results.
         os.makedirs(cfg.result_dir, exist_ok=True)
@@ -735,7 +735,7 @@ class Runner:
             #     )
 
             if world_rank == 0 and cfg.tb_every > 0 and step % cfg.tb_every == 0:
-                mem = (torch.xpu.max_memory_allocated() if torch.xpu.is_available() else torch.cuda.max_memory_allocated()) / 1024**3
+                mem = torch_acc.max_memory_allocated() / 1024**3
                 self.writer.add_scalar("train/loss", loss.item(), step)
                 self.writer.add_scalar("train/l1loss", l1loss.item(), step)
                 self.writer.add_scalar("train/ssimloss", ssimloss.item(), step)
@@ -753,7 +753,7 @@ class Runner:
 
             # save checkpoint before updating the model
             if step in [i - 1 for i in cfg.save_steps] or step == max_steps - 1:
-                mem = ( torch.xpu.max_memory_allocated() if torch.xpu.is_available() else torch.cuda.max_memory_allocated()) / 1024**3
+                mem = torch_acc.max_memory_allocated() / 1024**3
                 stats = {
                     "mem": mem,
                     "ellipse_time": time.time() - global_tic,
@@ -923,10 +923,7 @@ class Runner:
             masks = data["mask"].to(device) if "mask" in data else None
             height, width = pixels.shape[1:3]
 
-            if torch.xpu.is_available():
-                torch.xpu.synchronize()
-            else:
-                torch.cuda.synchronize()
+            torch_acc.synchronize()
             tic = time.time()
             colors, _, _ = self.rasterize_splats(
                 camtoworlds=camtoworlds,
@@ -938,10 +935,7 @@ class Runner:
                 far_plane=cfg.far_plane,
                 masks=masks,
             )  # [1, H, W, 3]
-            if torch.xpu.is_available():
-                torch.xpu.synchronize()
-            else:
-                torch.cuda.synchronize()
+            torch_acc.synchronize()
             ellipse_time += max(time.time() - tic, 1e-10)
 
             colors = torch.clamp(colors, 0.0, 1.0)
@@ -1183,6 +1177,37 @@ def main(local_rank: int, world_rank, world_size: int, cfg: Config):
         step = ckpts[0]["step"]
         runner.eval(step=step)
         runner.render_traj(step=step)
+        if cfg.save_ply:
+            if runner.cfg.app_opt:
+                # eval at origin to bake the appeareance into the colors
+                rgb = runner.app_module(
+                    features=runner.splats["features"],
+                    embed_ids=None,
+                    dirs=torch.zeros_like(runner.splats["means"][None, :, :]),
+                    sh_degree=runner.cfg.sh_degree,
+                )
+                rgb = rgb + runner.splats["colors"]
+                rgb = torch.sigmoid(rgb).squeeze(0).unsqueeze(1)
+                sh0 = rgb_to_sh(rgb)
+                shN = torch.empty([sh0.shape[0], 0, 3], device=sh0.device)
+            else:
+                sh0 = runner.splats["sh0"]
+                shN = runner.splats["shN"]
+
+            means = runner.splats["means"]
+            scales = runner.splats["scales"]
+            quats = runner.splats["quats"]
+            opacities = runner.splats["opacities"]
+            export_splats(
+                means=means,
+                scales=scales,
+                quats=quats,
+                opacities=opacities,
+                sh0=sh0,
+                shN=shN,
+                format="ply",
+                save_to=f"{cfg.result_dir}/point_cloud_{step}.ply",
+            )
         if cfg.compression is not None:
             runner.run_compression(step=step)
     else:

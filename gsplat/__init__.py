@@ -27,6 +27,7 @@ if FORCE_BACKEND == "cuda" or (FORCE_BACKEND == "" and torch.cuda.is_available()
             spherical_harmonics,
             world_to_cam,
         )
+        torch_acc = torch.cuda
         print("gsplat: CUDA backend successfully loaded.", file=sys.stderr)
     except ImportError:
         if FORCE_BACKEND == "cuda":
@@ -53,6 +54,7 @@ if not BACKEND and (FORCE_BACKEND == "sycl" or FORCE_BACKEND == ""):
             spherical_harmonics,
             world_to_cam,
         )
+        torch_acc = torch.xpu
         print("gsplat: SYCL backend successfully loaded.", file=sys.stderr)
     except ImportError as e:
         if FORCE_BACKEND == "sycl":
@@ -81,6 +83,7 @@ from .version import __version__
 
 __all__ = [
     "BACKEND",
+    "torch_acc",
     "PngCompression",
     "DefaultStrategy",
     "MCMCStrategy",
