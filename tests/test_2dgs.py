@@ -268,7 +268,7 @@ def test_fully_fused_projection_packed_2dgs(
 def test_rasterize_to_pixels_2dgs(
     test_data, channels: int, batch_dims: Tuple[int, ...]
 ):
-    from gsplat.cuda._torch_impl_2dgs import _rasterize_to_pixels_2dgs
+    from gsplat._torch_impl_2dgs import _rasterize_to_pixels_2dgs
     from gsplat.cuda._wrapper import (
         fully_fused_projection_2dgs,
         isect_offset_encode,
