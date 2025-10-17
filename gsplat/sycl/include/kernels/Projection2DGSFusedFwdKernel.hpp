@@ -8,6 +8,9 @@
 namespace gsplat::xpu {
 
 template<typename T>
+inline float sum(vec3<T> a) { return a.x + a.y + a.z; }
+
+template<typename T>
 struct Projection2DGSFusedFwdKernel {
     const uint32_t m_B;
     const uint32_t m_C;
@@ -113,9 +116,7 @@ struct Projection2DGSFusedFwdKernel {
 
         // WH = [RS_camera[0], RS_camera[1], mean_c]
         mat3<T> WH = mat3<T>(
-            RS_camera[0][0], RS_camera[1][0], mean_c.x,
-            RS_camera[0][1], RS_camera[1][1], mean_c.y,
-            RS_camera[0][2], RS_camera[1][2], mean_c.z
+            RS_camera[0], RS_camera[1], mean_c
         );
 
         // Projective transformation matrix: Camera -> Screen
@@ -137,7 +138,7 @@ struct Projection2DGSFusedFwdKernel {
         const vec3<T> temp_point = vec3<T>(T(1.0), T(1.0), T(-1.0));
 
         // Algebraic manipulation for computing mean and radius
-        const T distance = dot(temp_point * M2, M2);
+        const T distance = sum(temp_point * M2 * M2);
 
         // Ignore ill-conditioned primitives
         if (distance == T(0.0)) {
@@ -147,15 +148,9 @@ struct Projection2DGSFusedFwdKernel {
         }
 
         const vec3<T> f = (T(1.0) / distance) * temp_point;
-        const vec2<T> mean2d = vec2<T>(
-            dot(f * M0, M2),
-            dot(f * M1, M2)
-        );
+        const vec2<T> mean2d = vec2<T>(sum(f * M0 * M2), sum(f * M1 * M2));
+        const vec2<T> temp = {sum(f * M0 * M0), sum(f * M1 * M1)};
 
-        const vec2<T> temp = vec2<T>(
-            dot(f * M0, M0),
-            dot(f * M1, M1)
-        );
         const vec2<T> half_extend = mean2d * mean2d - temp;
 
         const T radius_x = sycl::ceil(T(3.33) * sycl::sqrt(sycl::max(T(1e-4), half_extend.x)));
@@ -176,8 +171,9 @@ struct Projection2DGSFusedFwdKernel {
         }
 
         // Compute normals (dual visible)
-        vec3<T> normal = vec3<T>(RS_camera[2][0], RS_camera[2][1], RS_camera[2][2]);
-        
+        // vec3<T> normal = vec3<T>(RS_camera[2][0], RS_camera[2][1], RS_camera[2][2]);
+        vec3<T> normal = RS_camera[2];
+
         // Flip normal if it is pointing away from the camera
         T multiplier = dot(-normal, mean_c) > T(0) ? T(1.0) : T(-1.0);
         normal *= multiplier;
@@ -190,15 +186,16 @@ struct Projection2DGSFusedFwdKernel {
         m_depths[idx] = mean_c.z;
 
         // Store ray transforms (row major KWH)
-        m_ray_transforms[idx * 9] = M0.x;
-        m_ray_transforms[idx * 9 + 1] = M0.y;
-        m_ray_transforms[idx * 9 + 2] = M0.z;
-        m_ray_transforms[idx * 9 + 3] = M1.x;
-        m_ray_transforms[idx * 9 + 4] = M1.y;
-        m_ray_transforms[idx * 9 + 5] = M1.z;
-        m_ray_transforms[idx * 9 + 6] = M2.x;
-        m_ray_transforms[idx * 9 + 7] = M2.y;
-        m_ray_transforms[idx * 9 + 8] = M2.z;
+        m_ray_transforms[idx * 9 + 0] = M0.x;  // [b,c,n,0,0]
+        m_ray_transforms[idx * 9 + 1] = M0.y;  // [b,c,n,0,1]  
+        m_ray_transforms[idx * 9 + 2] = M0.z;  // [b,c,n,0,2]
+        m_ray_transforms[idx * 9 + 3] = M1.x;  // [b,c,n,1,0]
+        m_ray_transforms[idx * 9 + 4] = M1.y;  // [b,c,n,1,1]
+        m_ray_transforms[idx * 9 + 5] = M1.z;  // [b,c,n,1,2]
+        m_ray_transforms[idx * 9 + 6] = M2.x;  // [b,c,n,2,0]
+        m_ray_transforms[idx * 9 + 7] = M2.y;  // [b,c,n,2,1]
+        m_ray_transforms[idx * 9 + 8] = M2.z;  // [b,c,n,2,2]
+
 
         // Store primitive normals
         m_normals[idx * 3] = normal.x;

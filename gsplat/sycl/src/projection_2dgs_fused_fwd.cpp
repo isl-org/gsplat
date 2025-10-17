@@ -57,9 +57,9 @@ projection_2dgs_fused_fwd(
     at::DimVector out_shape_cn3 = batch_dims;
     out_shape_cn3.insert(out_shape_cn3.end(), {C, N, 3});
 
-    // Output shape: [..., C, N, 3, 3] (flattened to [..., C, N, 9])
+    // Output shape: [..., C, N, 3, 3] 
     at::DimVector out_shape_cn33 = batch_dims;
-    out_shape_cn33.insert(out_shape_cn33.end(), {C, N, 9});
+    out_shape_cn33.insert(out_shape_cn33.end(), {C, N, 3, 3});
 
     at::Tensor radii = at::empty(out_shape_cn2, options.dtype(at::kInt));
     at::Tensor means2d = at::empty(out_shape_cn2, options);
