@@ -4,7 +4,20 @@ import pytest
 import torch
 from typing_extensions import Tuple
 
-device = torch.device("cuda:0")
+import gsplat 
+if gsplat.BACKEND == "sycl":
+    device = torch.device("xpu:0")
+elif gsplat.BACKEND == "cuda":
+    device = torch.device("cuda:0")
+else:
+    device = None
+
+requires_backend = pytest.mark.skipif(
+    gsplat.BACKEND not in ("cuda", "sycl"), reason="No CUDA or SYCL backend available"
+)
+requires_cuda = pytest.mark.skipif(
+    gsplat.BACKEND != "cuda", reason="Test requires CUDA backend"
+)
 
 
 def expand(data: dict, batch_dims: Tuple[int, ...]):
@@ -54,11 +67,11 @@ def test_data():
     }
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
+@requires_backend
 @pytest.mark.parametrize("batch_dims", [(), (2,), (1, 2)])
 def test_projection_2dgs(test_data, batch_dims: Tuple[int, ...]):
-    from gsplat.cuda._torch_impl_2dgs import _fully_fused_projection_2dgs
-    from gsplat.cuda._wrapper import fully_fused_projection_2dgs
+    from gsplat._torch_impl_2dgs import _fully_fused_projection_2dgs
+    from gsplat import fully_fused_projection_2dgs
 
     torch.manual_seed(42)
 
