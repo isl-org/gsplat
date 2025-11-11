@@ -183,7 +183,7 @@ struct RasterizeToPixels2DGSFwdKernel {
             uint32_t batch_start = range_start + m_chunk_size * b;
             uint32_t idx = batch_start + tr;
             
-            if (idx < range_end) {
+            if (tr < m_chunk_size && idx < range_end) {
                 // Get gaussian index
                 int32_t g = m_flatten_ids[idx];
                 m_slm_id_batch[tr] = g;
