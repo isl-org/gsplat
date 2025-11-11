@@ -29,9 +29,6 @@ void launch_rasterize_2dgs_bwd_kernel(
     // forward outputs
     const at::Tensor& render_colors,
     const at::Tensor& render_alphas,
-    const at::Tensor& render_normals,
-    const at::Tensor& render_distort,
-    const at::Tensor& render_median,
     const at::Tensor& last_ids,
     const at::Tensor& median_ids,
     // gradients of outputs
@@ -97,9 +94,6 @@ void launch_rasterize_2dgs_bwd_kernel(
                 flatten_ids.data_ptr<int32_t>(),
                 render_colors.data_ptr<float>(),
                 render_alphas.data_ptr<float>(),
-                render_normals.data_ptr<float>(),
-                render_distort.data_ptr<float>(),
-                render_median.data_ptr<float>(),
                 last_ids.data_ptr<int32_t>(),
                 median_ids.data_ptr<int32_t>(),
                 v_render_colors.data_ptr<float>(),
@@ -132,6 +126,7 @@ std::tuple<
     at::Tensor,
     at::Tensor,
     at::Tensor,
+    at::Tensor,
     at::Tensor>
 rasterize_to_pixels_2dgs_bwd(
     // Gaussian parameters
@@ -153,9 +148,6 @@ rasterize_to_pixels_2dgs_bwd(
     // forward outputs
     const at::Tensor render_colors,             // [..., image_height, image_width, channels]
     const at::Tensor render_alphas,             // [..., image_height, image_width]
-    const at::Tensor render_normals,            // [..., image_height, image_width, 3]
-    const at::Tensor render_distort,            // [..., image_height, image_width]
-    const at::Tensor render_median,             // [..., image_height, image_width]
     const at::Tensor last_ids,                  // [..., image_height, image_width]
     const at::Tensor median_ids,                // [..., image_height, image_width]
     // gradients of outputs
@@ -163,7 +155,8 @@ rasterize_to_pixels_2dgs_bwd(
     const at::Tensor v_render_alphas,           // [..., image_height, image_width]
     const at::Tensor v_render_normals,          // [..., image_height, image_width, 3]
     const at::Tensor v_render_distort,          // [..., image_height, image_width]
-    const at::Tensor v_render_median            // [..., image_height, image_width]
+    const at::Tensor v_render_median,            // [..., image_height, image_width]
+    bool absgrad
 ) {
     // Check input tensors are contiguous
     CHECK_CONTIGUOUS(means2d);
@@ -176,9 +169,6 @@ rasterize_to_pixels_2dgs_bwd(
     CHECK_CONTIGUOUS(flatten_ids);
     CHECK_CONTIGUOUS(render_colors);
     CHECK_CONTIGUOUS(render_alphas);
-    CHECK_CONTIGUOUS(render_normals);
-    CHECK_CONTIGUOUS(render_distort);
-    CHECK_CONTIGUOUS(render_median);
     CHECK_CONTIGUOUS(last_ids);
     CHECK_CONTIGUOUS(median_ids);
     CHECK_CONTIGUOUS(v_render_colors);
@@ -190,12 +180,13 @@ rasterize_to_pixels_2dgs_bwd(
     if (masks.has_value()) CHECK_CONTIGUOUS(masks.value());
     
     uint32_t channels = colors.size(-1);
-    bool compute_mean_abs = true;
     
     // Create output tensors
     auto options = means2d.options().dtype(torch::kFloat32);
-    at::Tensor v_means2d_abs = compute_mean_abs ? 
-        at::zeros_like(means2d, options) : at::Tensor();
+    at::Tensor v_means2d_abs;
+    if (absgrad) {
+        v_means2d_abs = at::zeros_like(means2d, options);
+    }
     at::Tensor v_means2d = at::zeros_like(means2d, options);
     at::Tensor v_ray_transforms = at::zeros_like(ray_transforms, options);
     at::Tensor v_colors = at::zeros_like(colors, options);
@@ -204,18 +195,18 @@ rasterize_to_pixels_2dgs_bwd(
     at::Tensor v_densify = at::zeros_like(densify, options);
     
     // Launch kernel with appropriate dimension
-#define __GS__CALL_(DIM)                                                           \
-    case DIM:                                                                      \
-        launch_rasterize_2dgs_bwd_kernel<DIM>(                                     \
-            means2d, ray_transforms, colors, opacities, normals, densify,          \
-            backgrounds, masks, image_width, image_height, tile_size,              \
-            tile_offsets, flatten_ids, render_colors, render_alphas,               \
-            render_normals, render_distort, render_median, last_ids, median_ids,   \
-            v_render_colors, v_render_alphas, v_render_normals,                    \
-            v_render_distort, v_render_median,                                     \
-            compute_mean_abs ? c10::optional<at::Tensor>(v_means2d_abs) : c10::nullopt, \
+#define __GS__CALL_(DIM)                                                             \
+    case DIM:                                                                        \
+        launch_rasterize_2dgs_bwd_kernel<DIM>(                                       \ 
+            means2d, ray_transforms, colors, opacities, normals, densify,            \
+            backgrounds, masks, image_width, image_height, tile_size,                \
+            tile_offsets, flatten_ids, render_colors,                                \
+            render_alphas, last_ids, median_ids,                                     \
+            v_render_colors, v_render_alphas, v_render_normals,                      \
+            v_render_distort, v_render_median,                                       \
+            absgrad ? c10::optional<at::Tensor>(v_means2d_abs) : c10::nullopt,       \
             v_means2d, v_ray_transforms, v_colors, v_opacities, v_normals, v_densify \
-        );                                                                         \
+        );                                                                           \
         break;
 
     switch (channels) {
@@ -244,12 +235,13 @@ rasterize_to_pixels_2dgs_bwd(
 #undef __GS__CALL_
     
     return std::make_tuple(
-        compute_mean_abs ? v_means2d_abs : v_means2d,
+        v_means2d_abs,
         v_means2d,
         v_ray_transforms,
         v_colors,
         v_opacities,
-        v_normals
+        v_normals,
+        v_densify
     );
 }
 
