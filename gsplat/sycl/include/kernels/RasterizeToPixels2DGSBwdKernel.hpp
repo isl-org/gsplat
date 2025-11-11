@@ -267,7 +267,7 @@ struct RasterizeToPixels2DGSBwdKernel {
         );
         
         // Process batches of gaussians in reverse order (back to front)
-        for (int32_t b = num_batches - 1; b >= 0; --b) {
+        for (int32_t b = 0; b < num_batches; ++b) {
             // Synchronize threads before loading next batch
             item.barrier(sycl::access::fence_space::local_space);
             
