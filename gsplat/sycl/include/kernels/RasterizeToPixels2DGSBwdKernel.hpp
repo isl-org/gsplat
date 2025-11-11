@@ -43,9 +43,6 @@ struct RasterizeToPixels2DGSBwdKernel {
     // Forward pass outputs
     const float* m_render_colors;             // Rendered colors
     const float* m_render_alphas;             // Alpha values
-    const float* m_render_normals;            // Rendered normals
-    const float* m_render_distort;            // Distortion values
-    const float* m_render_median;             // Median depth values
     const int32_t* m_last_ids;               // Last Gaussian indices
     const int32_t* m_median_ids;             // Median Gaussian indices
     
@@ -100,9 +97,6 @@ struct RasterizeToPixels2DGSBwdKernel {
         // Forward outputs
         const float* render_colors,
         const float* render_alphas,
-        const float* render_normals,
-        const float* render_distort,
-        const float* render_median,
         const int32_t* last_ids,
         const int32_t* median_ids,
         // Gradient inputs
@@ -136,8 +130,7 @@ struct RasterizeToPixels2DGSBwdKernel {
         m_tile_size(tile_size), m_tile_width(tile_width), m_tile_height(tile_height),
         m_tile_offsets(tile_offsets), m_flatten_ids(flatten_ids),
         m_render_colors(render_colors), m_render_alphas(render_alphas),
-        m_render_normals(render_normals), m_render_distort(render_distort),
-        m_render_median(render_median), m_last_ids(last_ids), m_median_ids(median_ids),
+        m_last_ids(last_ids), m_median_ids(median_ids),
         m_v_render_colors(v_render_colors), m_v_render_alphas(v_render_alphas),
         m_v_render_normals(v_render_normals), m_v_render_distort(v_render_distort),
         m_v_render_median(v_render_median), 
@@ -163,12 +156,6 @@ struct RasterizeToPixels2DGSBwdKernel {
         const int32_t* tile_offsets_ptr = m_tile_offsets + image_id * m_tile_height * m_tile_width;
         const float* render_alphas_ptr = m_render_alphas + image_id * m_image_height * m_image_width;
         const float* render_colors_ptr = m_render_colors + image_id * m_image_height * m_image_width * COLOR_DIM;
-        const float* render_normals_ptr = m_render_normals + image_id * m_image_height * m_image_width * 3;
-        const float* render_distort_ptr = nullptr;
-        if (m_render_distort != nullptr) {
-            render_distort_ptr = m_render_distort + image_id * m_image_height * m_image_width;
-        }
-        const float* render_median_ptr = m_render_median + image_id * m_image_height * m_image_width;
         
         const int32_t* last_ids_ptr = m_last_ids + image_id * m_image_height * m_image_width;
         const int32_t* median_ids_ptr = m_median_ids + image_id * m_image_height * m_image_width;
