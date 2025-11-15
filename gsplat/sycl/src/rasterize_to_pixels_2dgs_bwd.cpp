@@ -62,7 +62,7 @@ void launch_rasterize_2dgs_bwd_kernel(
 
     // Define the execution ranges
     sycl::range<3> localRange{1, tile_size, tile_size};
-    sycl::range<3> globalRange{I, tile_height, tile_width};
+    sycl::range<3> globalRange{I, tile_height*tile_size, tile_width*tile_size};
     sycl::nd_range<3> range(globalRange, localRange);
     
     // Use a fixed chunk size for batching
