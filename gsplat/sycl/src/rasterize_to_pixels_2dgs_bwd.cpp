@@ -62,7 +62,9 @@ void launch_rasterize_2dgs_bwd_kernel(
 
     // Define the execution ranges
     sycl::range<3> localRange{1, tile_size, tile_size};
-    sycl::range<3> globalRange{I, tile_height, tile_width};
+    sycl::range<3> globalRange{
+        I, tile_height * tile_size, tile_width * tile_size
+    };
     sycl::nd_range<3> range(globalRange, localRange);
     
     // Use a fixed chunk size for batching
@@ -155,7 +157,7 @@ rasterize_to_pixels_2dgs_bwd(
     const at::Tensor v_render_alphas,           // [..., image_height, image_width]
     const at::Tensor v_render_normals,          // [..., image_height, image_width, 3]
     const at::Tensor v_render_distort,          // [..., image_height, image_width]
-    const at::Tensor v_render_median,            // [..., image_height, image_width]
+    const at::Tensor v_render_median,           // [..., image_height, image_width]
     bool absgrad
 ) {
     // Check input tensors are contiguous
@@ -197,7 +199,7 @@ rasterize_to_pixels_2dgs_bwd(
     // Launch kernel with appropriate dimension
 #define __GS__CALL_(DIM)                                                             \
     case DIM:                                                                        \
-        launch_rasterize_2dgs_bwd_kernel<DIM>(                                       \ 
+        launch_rasterize_2dgs_bwd_kernel<DIM>(                                       \
             means2d, ray_transforms, colors, opacities, normals, densify,            \
             backgrounds, masks, image_width, image_height, tile_size,                \
             tile_offsets, flatten_ids, render_colors,                                \

@@ -27,14 +27,18 @@ if FORCE_BACKEND == "cuda" or (FORCE_BACKEND == "" and torch.cuda.is_available()
             spherical_harmonics,
             world_to_cam,
         )
+
         torch_acc = torch.cuda
         print("gsplat: CUDA backend successfully loaded.", file=sys.stderr)
     except ImportError:
         if FORCE_BACKEND == "cuda":
-            print("gsplat: Error! GSPLAT_BACKEND=cuda was set but CUDA backend failed to load.", file=sys.stderr)
+            print(
+                "gsplat: Error! GSPLAT_BACKEND=cuda was set but CUDA backend failed to load.",
+                file=sys.stderr,
+            )
         pass
 
-if not BACKEND and (FORCE_BACKEND == "sycl" or FORCE_BACKEND == ""):
+if not BACKEND and (FORCE_BACKEND in ("sycl", "xpu") or FORCE_BACKEND == "" and torch.xpu.is_available()):
     try:
         BACKEND = "sycl"
         from .sycl._wrapper import (
@@ -54,16 +58,20 @@ if not BACKEND and (FORCE_BACKEND == "sycl" or FORCE_BACKEND == ""):
             spherical_harmonics,
             world_to_cam,
         )
+
         torch_acc = torch.xpu
-        print("gsplat: SYCL backend successfully loaded.", file=sys.stderr)
+        print("gsplat: SYCL XPU backend successfully loaded.", file=sys.stderr)
     except ImportError as e:
-        if FORCE_BACKEND == "sycl":
-            print(f"gsplat: Error! GSPLAT_BACKEND=sycl was set but SYCL backend failed to load: {e}", file=sys.stderr)
+        if FORCE_BACKEND in ("sycl", "xpu"):
+            print(
+                f"gsplat: Error! GSPLAT_BACKEND={FORCE_BACKEND} was set but SYCL XPU backend failed to load: {e}",
+                file=sys.stderr,
+            )
         pass
 
 if not BACKEND:
     print(
-        "gsplat: Warning! No high-performance backend (CUDA or SYCL) found.",
+        "gsplat: Warning! No high-performance backend (CUDA or SYCL XPU) found.",
         file=sys.stderr,
     )
 

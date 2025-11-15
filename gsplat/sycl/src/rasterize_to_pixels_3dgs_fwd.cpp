@@ -77,12 +77,12 @@ void launch_rasterize_kernel(
 
 std::tuple<at::Tensor, at::Tensor, at::Tensor> rasterize_to_pixels_3dgs_fwd(
     // Gaussian parameters
-    const at::Tensor means2d,
-    const at::Tensor conics,
-    const at::Tensor colors,
-    const at::Tensor opacities,
-    const at::optional<at::Tensor> backgrounds,
-    const at::optional<at::Tensor> masks,
+    const at::Tensor means2d,      // [..., C, N, 2] or [C, N, 2]
+    const at::Tensor conics,       // [..., C, N, 3] or [C, N, 3]
+    const at::Tensor colors,       // [..., C, N, COLOR_DIM] or [C, N, COLOR_DIM]
+    const at::Tensor opacities,    // [..., C, N] or [C, N]
+    const at::optional<at::Tensor> backgrounds, // [..., C, COLOR_DIM] or [C, COLOR_DIM] optional
+    const at::optional<at::Tensor> masks,       // [..., C, image_height, image_width] optional
     // image size
     const uint32_t image_width,
     const uint32_t image_height,
@@ -100,18 +100,32 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor> rasterize_to_pixels_3dgs_fwd(
     if (backgrounds.has_value()) CHECK_CONTIGUOUS(backgrounds.value());
     if (masks.has_value()) CHECK_CONTIGUOUS(masks.value());
 
+    TORCH_CHECK(means2d.dim() >= 2, "means2d must have at least 2 dimensions");
+    TORCH_CHECK(colors.dim() >= 2, "colors must have at least 2 dimensions");
+
     const uint32_t channels = colors.size(-1);
     const bool packed = means2d.dim() == 2;
     const uint32_t C = tile_offsets.size(0);
-    const uint32_t N = packed ? 0 : means2d.size(1);
+    const uint32_t N = packed ? 0 : means2d.size(-2);
     const uint32_t tile_height = tile_offsets.size(1);
     const uint32_t tile_width = tile_offsets.size(2);
     
     auto options_float = means2d.options().dtype(torch::kFloat32);
     auto options_int = means2d.options().dtype(torch::kInt32);
-    at::Tensor renders = at::empty({C, image_height, image_width, channels}, options_float);
-    at::Tensor alphas = at::empty({C, image_height, image_width, 1}, options_float);
-    at::Tensor last_ids = at::empty({C, image_height, image_width}, options_int);
+    at::DimVector image_dims(tile_offsets.sizes().slice(0, tile_offsets.dim() - 2));
+
+    at::DimVector out_shape_renders = image_dims;
+    out_shape_renders.append({image_height, image_width, channels});
+
+    at::DimVector out_shape_alphas = image_dims;
+    out_shape_alphas.append({image_height, image_width, 1});
+
+    at::DimVector out_shape_last_ids = image_dims;
+    out_shape_last_ids.append({image_height, image_width});
+
+    at::Tensor renders = at::empty(out_shape_renders, options_float);
+    at::Tensor alphas = at::empty(out_shape_alphas, options_float);
+    at::Tensor last_ids = at::empty(out_shape_last_ids, options_int);
 
 #define __GS__CALL_(DIM)                                                              \
     case DIM:                                                                         \

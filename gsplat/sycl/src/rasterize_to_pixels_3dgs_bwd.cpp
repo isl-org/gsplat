@@ -103,12 +103,12 @@ void launch_rasterize_bwd_kernel(
 std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor, at::Tensor>
 rasterize_to_pixels_3dgs_bwd(
     // Gaussian parameters
-    const at::Tensor means2d,
-    const at::Tensor conics,
-    const at::Tensor colors,
-    const at::Tensor opacities,
-    const at::optional<at::Tensor> backgrounds,
-    const at::optional<at::Tensor> masks,
+    const at::Tensor means2d,      // [..., C, N, 2] or [C, N, 2]
+    const at::Tensor conics,       // [..., C, N, 3] or [C, N, 3]
+    const at::Tensor colors,       // [..., C, N, COLOR_DIM] or [C, N, COLOR_DIM]
+    const at::Tensor opacities,    // [..., C, N] or [C, N]
+    const at::optional<at::Tensor> backgrounds, // [..., C, COLOR_DIM] or [C, COLOR_DIM] optional
+    const at::optional<at::Tensor> masks,       // [..., C, image_height, image_width] optional
     // image size
     const uint32_t image_width,
     const uint32_t image_height,
@@ -117,11 +117,11 @@ rasterize_to_pixels_3dgs_bwd(
     const at::Tensor tile_offsets,
     const at::Tensor flatten_ids,
     // forward outputs
-    const at::Tensor render_alphas,
-    const at::Tensor last_ids,
+    const at::Tensor render_alphas,    // [..., C, image_height, image_width, 1]
+    const at::Tensor last_ids,         // [..., C, image_height, image_width]
     // gradients of outputs
-    const at::Tensor v_render_colors,
-    const at::Tensor v_render_alphas,
+    const at::Tensor v_render_colors,  // [..., C, image_height, image_width, COLOR_DIM]
+    const at::Tensor v_render_alphas,  // [..., C, image_height, image_width, 1]
     // options
     bool absgrad
 ) {
@@ -138,11 +138,14 @@ rasterize_to_pixels_3dgs_bwd(
     if (backgrounds.has_value()) CHECK_CONTIGUOUS(backgrounds.value());
     if (masks.has_value()) CHECK_CONTIGUOUS(masks.value());
 
+    TORCH_CHECK(means2d.dim() >= 2, "means2d must have at least 2 dimensions");
+    TORCH_CHECK(colors.dim() >= 2, "colors must have at least 2 dimensions");
+
     // --- Parameter Derivation ---
     const uint32_t COLOR_DIM = colors.size(-1);
     const bool packed = means2d.dim() == 2;
     const uint32_t C = tile_offsets.size(0);
-    const uint32_t N = packed ? 0 : means2d.size(1);
+    const uint32_t N = packed ? 0 : means2d.size(-2);
     const uint32_t n_isects = flatten_ids.size(0);
     const uint32_t tile_height = tile_offsets.size(1);
     const uint32_t tile_width = tile_offsets.size(2);

@@ -1498,7 +1498,7 @@ def rasterization_2dgs(
         image_ids = None
 
     densify = torch.zeros_like(
-        means2d, dtype=means.dtype, requires_grad=True, device="cuda"
+        means2d, dtype=means.dtype, requires_grad=True, device=means2d.device
     )
     # Identify intersecting tiles
     tile_width = math.ceil(width / float(tile_size))

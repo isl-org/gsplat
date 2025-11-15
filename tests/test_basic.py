@@ -26,7 +26,7 @@ else:
     device = None
 
 requires_backend = pytest.mark.skipif(
-    gsplat.BACKEND not in ("cuda", "sycl"), reason="No CUDA or SYCL backend available"
+    gsplat.BACKEND not in ("cuda", "sycl"), reason="No CUDA or SYCL XPU backend available"
 )
 requires_cuda = pytest.mark.skipif(
     gsplat.BACKEND != "cuda", reason="Test requires CUDA backend"
@@ -555,20 +555,22 @@ def test_rasterize_to_pixels(test_data, channels: int, batch_dims: Tuple[int, ..
         flatten_ids,
         backgrounds=backgrounds,
     )
-    _render_colors, _render_alphas = _rasterize_to_pixels(
-        means2d,
-        conics,
-        colors,
-        opacities,
-        width,
-        height,
-        tile_size,
-        isect_offsets,
-        flatten_ids,
-        backgrounds=backgrounds,
-    )
-    torch.testing.assert_close(render_colors, _render_colors)
-    torch.testing.assert_close(render_alphas, _render_alphas)
+
+    if gsplat.BACKEND != "sycl":    # nerfacc required for comparison
+        _render_colors, _render_alphas = _rasterize_to_pixels(
+            means2d,
+            conics,
+            colors,
+            opacities,
+            width,
+            height,
+            tile_size,
+            isect_offsets,
+            flatten_ids,
+            backgrounds=backgrounds,
+        )
+        torch.testing.assert_close(render_colors, _render_colors)
+        torch.testing.assert_close(render_alphas, _render_alphas)
 
     v_render_colors, v_render_alphas = torch.randn_like(
         render_colors
@@ -578,13 +580,15 @@ def test_rasterize_to_pixels(test_data, channels: int, batch_dims: Tuple[int, ..
         + (render_alphas * v_render_alphas).sum(),
         (means2d, conics, colors, opacities, backgrounds),
     )
-    _grads = torch.autograd.grad(
-        (_render_colors * v_render_colors).sum()
-        + (_render_alphas * v_render_alphas).sum(),
-        (means2d, conics, colors, opacities, backgrounds),
-    )
-    torch.testing.assert_close(grads[0], _grads[0], rtol=5e-3, atol=5e-3)
-    torch.testing.assert_close(grads[1], _grads[1], rtol=1e-3, atol=1e-3)
-    torch.testing.assert_close(grads[2], _grads[2], rtol=1e-3, atol=1e-3)
-    torch.testing.assert_close(grads[3], _grads[3], rtol=8e-3, atol=6e-3)
-    torch.testing.assert_close(grads[4], _grads[4], rtol=1e-3, atol=1e-3)
+    
+    if gsplat.BACKEND != "sycl":    # nerfacc required for comparison
+        _grads = torch.autograd.grad(
+            (_render_colors * v_render_colors).sum()
+            + (_render_alphas * v_render_alphas).sum(),
+            (means2d, conics, colors, opacities, backgrounds),
+        )
+        torch.testing.assert_close(grads[0], _grads[0], rtol=5e-3, atol=5e-3)
+        torch.testing.assert_close(grads[1], _grads[1], rtol=1e-3, atol=1e-3)
+        torch.testing.assert_close(grads[2], _grads[2], rtol=1e-3, atol=1e-3)
+        torch.testing.assert_close(grads[3], _grads[3], rtol=8e-3, atol=6e-3)
+        torch.testing.assert_close(grads[4], _grads[4], rtol=1e-3, atol=1e-3)
