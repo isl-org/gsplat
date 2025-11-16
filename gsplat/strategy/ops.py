@@ -6,16 +6,15 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from gsplat import BACKEND
-if BACKEND == "cuda":
-    from gsplat.cuda._wrapper import (
-        quat_scale_to_covar_preci,
-    )
-elif BACKEND == "sycl":
+
+if BACKEND == "sycl":
     from gsplat.sycl._wrapper import (
         quat_scale_to_covar_preci,
     )
-else:
-    raise ImportError("gsplat: No backend loaded, cannot import strategy ops.")
+else:  # BACKEND == "cuda" or None
+    from gsplat.cuda._wrapper import (
+        quat_scale_to_covar_preci,
+    )
 
 from gsplat.relocation import compute_relocation
 from gsplat.utils import normalized_quat_to_rotmat

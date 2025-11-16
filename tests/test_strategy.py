@@ -8,7 +8,8 @@ pytest <THIS_PY_FILE> -s
 
 import pytest
 import torch
-import gsplat 
+import gsplat
+
 if gsplat.BACKEND == "sycl":
     device = torch.device("xpu:0")
     torch_acc = torch.xpu
@@ -21,6 +22,7 @@ else:
 requires_backend = pytest.mark.skipif(
     gsplat.BACKEND not in ("cuda", "sycl"), reason="No CUDA or SYCL backend available"
 )
+
 
 @requires_backend
 def test_strategy():

@@ -8,6 +8,7 @@ from .base import Strategy
 from .ops import duplicate, remove, reset_opa, split
 from .. import torch_acc
 
+
 @dataclass
 class DefaultStrategy(Strategy):
     """A default strategy that follows the original 3DGS paper:

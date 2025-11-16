@@ -4,13 +4,14 @@ import pytest
 import torch
 from typing_extensions import Tuple
 
-import gsplat 
+import gsplat
+
 if gsplat.BACKEND == "sycl":
     device = torch.device("xpu:0")
 elif gsplat.BACKEND == "cuda":
     device = torch.device("cuda:0")
 else:
-    device = None
+    device = torch.device("cpu")
 
 requires_backend = pytest.mark.skipif(
     gsplat.BACKEND not in ("cuda", "sycl"), reason="No CUDA or SYCL backend available"
@@ -32,7 +33,6 @@ def expand(data: dict, batch_dims: Tuple[int, ...]):
 
 
 @pytest.fixture
-@requires_backend
 def test_data():
     C = 3
     N = 1000
@@ -135,7 +135,7 @@ def test_projection_2dgs(test_data, batch_dims: Tuple[int, ...]):
     torch.testing.assert_close(v_means, _v_means, rtol=1e-2, atol=6e-2)
 
 
-@pytest.mark.skipif(device is None, reason="No GPU device")
+@requires_backend
 @pytest.mark.parametrize("sparse_grad", [False])
 @pytest.mark.parametrize("batch_dims", [(), (2,), (1, 2)])
 def test_fully_fused_projection_packed_2dgs(
@@ -322,7 +322,13 @@ def test_rasterize_to_pixels_2dgs(
     normals.requires_grad = True
     densify.requires_grad = True
 
-    (render_colors, render_alphas, render_normals, _, _,) = rasterize_to_pixels_2dgs(
+    (
+        render_colors,
+        render_alphas,
+        render_normals,
+        _,
+        _,
+    ) = rasterize_to_pixels_2dgs(
         means2d,
         ray_transforms,
         colors,
@@ -338,7 +344,7 @@ def test_rasterize_to_pixels_2dgs(
         distloss=True,
     )
 
-    if gsplat.BACKEND != "sycl":    # nerfacc required for comparison
+    if gsplat.BACKEND != "sycl":  # nerfacc required for comparison
         _render_colors, _render_alphas, _render_normals = _rasterize_to_pixels_2dgs(
             means2d,
             ray_transforms,
@@ -371,7 +377,7 @@ def test_rasterize_to_pixels_2dgs(
         (means2d, ray_transforms, colors, opacities, backgrounds, normals),
     )
 
-    if gsplat.BACKEND != "sycl":    # nerfacc required for comparison
+    if gsplat.BACKEND != "sycl":  # nerfacc required for comparison
         (
             _v_means2d,
             _v_ray_transforms,
@@ -389,7 +395,9 @@ def test_rasterize_to_pixels_2dgs(
         # assert close forward
         torch.testing.assert_close(render_colors, _render_colors, atol=1e-3, rtol=1e-3)
         torch.testing.assert_close(render_alphas, _render_alphas, atol=1e-3, rtol=1e-3)
-        torch.testing.assert_close(render_normals, _render_normals, atol=1e-3, rtol=1e-3)
+        torch.testing.assert_close(
+            render_normals, _render_normals, atol=1e-3, rtol=1e-3
+        )
 
         # assert close backward
         torch.testing.assert_close(v_means2d, _v_means2d, rtol=1e-3, atol=1e-3)

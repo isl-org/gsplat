@@ -13,6 +13,7 @@ import torch
 
 # device = torch.device("cuda:0")
 import gsplat
+
 if gsplat.BACKEND == "sycl":
     device = torch.device("xpu:0")
 elif gsplat.BACKEND == "cuda":
@@ -21,8 +22,10 @@ else:
     device = None
 
 requires_backend = pytest.mark.skipif(
-    gsplat.BACKEND not in ("cuda", "sycl"), reason="No CUDA or SYCL XPU backend available"
+    gsplat.BACKEND not in ("cuda", "sycl"),
+    reason="No CUDA or SYCL XPU backend available",
 )
+
 
 @requires_backend
 @pytest.mark.parametrize("per_view_color", [True, False])
@@ -91,7 +94,7 @@ def test_rasterization(
     elif render_mode == "RGB+D":
         assert renders.shape == batch_dims + (C, height, width, 4)
 
-    if gsplat.BACKEND != "sycl":    # nerfacc required for comparison
+    if gsplat.BACKEND != "sycl":  # nerfacc required for comparison
         _renders, _alphas, _meta = _rasterization(
             means=means,
             quats=quats,

@@ -26,7 +26,7 @@ jobs:
         run: |
           pip install black[jupyter]==22.3.0 pytest
           pip install torch==2.0.0 --index-url https://download.pytorch.org/whl/cpu
-          BUILD_NO_CUDA=1 pip install .
+          BUILD_NO_CUDA=1 pip install --no-build-isolation .
       - name: Run Black Format Check
         run: black . gsplat/ tests/ examples/ profiling/ --check
       - name: Run Tests.

@@ -29,16 +29,7 @@ if not has_cuda:
     except (ImportError, AttributeError):
         pass
 
-has_sycl_compiler = False
-if (
-    sp.run(["icpx", "--version"], stdout=sp.DEVNULL, stderr=sp.DEVNULL).returncode == 0
-) or (
-    sp.run(["dpcpp", "--version"], stdout=sp.DEVNULL, stderr=sp.DEVNULL).returncode == 0
-):
-    has_sycl_compiler = True
-
-BUILD_SYCL = has_xpu and has_sycl_compiler
-
+BUILD_SYCL = has_xpu
 BUILD_NO_CUDA = os.getenv("BUILD_NO_CUDA", "0") == "1"
 WITH_SYMBOLS = os.getenv("WITH_SYMBOLS", "0") == "1"
 LINE_INFO = os.getenv("LINE_INFO", "0") == "1"

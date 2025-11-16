@@ -27,7 +27,7 @@ jobs:
         run: |
           pip install -r docs/requirements.txt
           pip install torch==2.0.0 --index-url https://download.pytorch.org/whl/cpu
-          BUILD_NO_CUDA=1 pip install .
+          BUILD_NO_CUDA=1 pip install --no-build-isolation .
       
       # Get version.
       - name: Get version + subdirectory

@@ -26,7 +26,8 @@ else:
     device = None
 
 requires_backend = pytest.mark.skipif(
-    gsplat.BACKEND not in ("cuda", "sycl"), reason="No CUDA or SYCL XPU backend available"
+    gsplat.BACKEND not in ("cuda", "sycl"),
+    reason="No CUDA or SYCL XPU backend available",
 )
 requires_cuda = pytest.mark.skipif(
     gsplat.BACKEND != "cuda", reason="Test requires CUDA backend"
@@ -313,20 +314,24 @@ def test_fully_fused_projection_packed(
             calc_compensations=calc_compensations,
             camera_model=camera_model,
         )
-        _radii, _means2d, _depths, _conics, _compensations = (
-            gsplat.fully_fused_projection(
-                means,
-                None,
-                quats,
-                scales,
-                viewmats,
-                Ks,
-                width,
-                height,
-                packed=False,
-                calc_compensations=calc_compensations,
-                camera_model=camera_model,
-            )
+        (
+            _radii,
+            _means2d,
+            _depths,
+            _conics,
+            _compensations,
+        ) = gsplat.fully_fused_projection(
+            means,
+            None,
+            quats,
+            scales,
+            viewmats,
+            Ks,
+            width,
+            height,
+            packed=False,
+            calc_compensations=calc_compensations,
+            camera_model=camera_model,
         )
     else:
         covars, _ = gsplat.quat_scale_to_covar_preci(quats, scales, triu=True)
@@ -344,20 +349,24 @@ def test_fully_fused_projection_packed(
             calc_compensations=calc_compensations,
             camera_model=camera_model,
         )
-        _radii, _means2d, _depths, _conics, _compensations = (
-            gsplat.fully_fused_projection(
-                means,
-                covars,
-                None,
-                None,
-                viewmats,
-                Ks,
-                width,
-                height,
-                packed=False,
-                calc_compensations=calc_compensations,
-                camera_model=camera_model,
-            )
+        (
+            _radii,
+            _means2d,
+            _depths,
+            _conics,
+            _compensations,
+        ) = gsplat.fully_fused_projection(
+            means,
+            covars,
+            None,
+            None,
+            viewmats,
+            Ks,
+            width,
+            height,
+            packed=False,
+            calc_compensations=calc_compensations,
+            camera_model=camera_model,
         )
 
     (
@@ -556,7 +565,7 @@ def test_rasterize_to_pixels(test_data, channels: int, batch_dims: Tuple[int, ..
         backgrounds=backgrounds,
     )
 
-    if gsplat.BACKEND != "sycl":    # nerfacc required for comparison
+    if gsplat.BACKEND != "sycl":  # nerfacc required for comparison
         _render_colors, _render_alphas = _rasterize_to_pixels(
             means2d,
             conics,
@@ -580,8 +589,8 @@ def test_rasterize_to_pixels(test_data, channels: int, batch_dims: Tuple[int, ..
         + (render_alphas * v_render_alphas).sum(),
         (means2d, conics, colors, opacities, backgrounds),
     )
-    
-    if gsplat.BACKEND != "sycl":    # nerfacc required for comparison
+
+    if gsplat.BACKEND != "sycl":  # nerfacc required for comparison
         _grads = torch.autograd.grad(
             (_render_colors * v_render_colors).sum()
             + (_render_alphas * v_render_alphas).sum(),
