@@ -34,6 +34,7 @@ if (
     not BACKEND
     and _force_backend in ("sycl", "xpu")
     or _force_backend == ""
+    and hasattr(torch, "xpu")
     and torch.xpu.is_available()
 ):
     from .sycl._wrapper import (  # Overwrite imports for SYCL backend
