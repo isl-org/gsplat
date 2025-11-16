@@ -6,29 +6,24 @@ namespace gsplat::xpu {
 struct IsectOffsetEncodeKernel {
 
     const uint32_t m_n_isects;
-    const int64_t* m_isect_ids;
+    const int64_t *m_isect_ids;
     const uint32_t m_C;
     const uint32_t m_n_tiles;
     const uint32_t m_tile_n_bits;
-    int32_t* m_offsets; //[C, n_tiles]
+    int32_t *m_offsets; //[C, n_tiles]
 
     IsectOffsetEncodeKernel(
         const uint32_t n_isects,
-        const int64_t* isect_ids,
+        const int64_t *isect_ids,
         const uint32_t C,
         const uint32_t n_tiles,
         const uint32_t tile_n_bits,
-        int32_t* offsets
-    ) : 
-    m_n_isects(n_isects),
-    m_isect_ids(isect_ids),
-    m_C(C),
-    m_n_tiles(n_tiles),
-    m_tile_n_bits(tile_n_bits),
-    m_offsets(offsets)
-    {}
+        int32_t *offsets
+    )
+        : m_n_isects(n_isects), m_isect_ids(isect_ids), m_C(C),
+          m_n_tiles(n_tiles), m_tile_n_bits(tile_n_bits), m_offsets(offsets) {}
 
-    void operator()(sycl::nd_item<1> work_item)  const {
+    void operator()(sycl::nd_item<1> work_item) const {
         uint32_t idx = work_item.get_global_id(0);
 
         if (idx >= m_n_isects)
@@ -53,10 +48,11 @@ struct IsectOffsetEncodeKernel {
         if (idx > 0) {
             // visit the current and previous isect_id and check if the (cid,
             // tile_id) pair changes.
-            int64_t isect_id_prev = m_isect_ids[idx - 1] >> 32; // shift out the depth
+            int64_t isect_id_prev =
+                m_isect_ids[idx - 1] >> 32; // shift out the depth
             if (isect_id_prev == isect_id_curr)
                 return;
-    
+
             // write out the offsets between the previous and current tiles
             int64_t cid_prev = isect_id_prev >> m_tile_n_bits;
             int64_t tid_prev = isect_id_prev & ((1 << m_tile_n_bits) - 1);
@@ -67,6 +63,6 @@ struct IsectOffsetEncodeKernel {
     }
 };
 
-#endif 
+#endif
 
 } // namespace  gsplat::xpu

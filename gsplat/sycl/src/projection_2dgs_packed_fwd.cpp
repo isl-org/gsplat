@@ -1,11 +1,11 @@
- 
+
 #include <c10/xpu/XPUStream.h>
 
-#include "Ops.h"
 #include "Common.h"
+#include "Ops.h"
 
-namespace  gsplat::xpu {
-    
+namespace gsplat::xpu {
+
 std::tuple<
     at::Tensor,
     at::Tensor,

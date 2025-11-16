@@ -1,7 +1,7 @@
 #include <c10/xpu/XPUStream.h>
 
-#include "Ops.h"
 #include "Common.h"
+#include "Ops.h"
 #include "kernels/PackedProjectionBwdKernel.hpp"
 
 namespace gsplat::xpu {
@@ -31,13 +31,23 @@ projection_ewa_3dgs_packed_bwd(
     const at::Tensor v_conics,                      // [nnz, 3]
     const at::optional<at::Tensor> v_compensations, // [nnz] optional
     const bool viewmats_requires_grad,
-    const bool sparse_grad) {
-
-    TORCH_CHECK(means.is_contiguous(), "Input 'means' tensor must be contiguous.");
-    TORCH_CHECK(viewmats.is_contiguous(), "Input 'viewmats' tensor must be contiguous.");
+    const bool sparse_grad
+) {
+    TORCH_CHECK(
+        means.is_contiguous(), "Input 'means' tensor must be contiguous."
+    );
+    TORCH_CHECK(
+        viewmats.is_contiguous(), "Input 'viewmats' tensor must be contiguous."
+    );
     TORCH_CHECK(Ks.is_contiguous(), "Input 'Ks' tensor must be contiguous.");
-    TORCH_CHECK(batch_ids.is_contiguous(), "Input 'batch_ids' tensor must be contiguous.");
-    TORCH_CHECK(means.device().type() == at::kXPU, "Input tensors must be on XPU device.");
+    TORCH_CHECK(
+        batch_ids.is_contiguous(),
+        "Input 'batch_ids' tensor must be contiguous."
+    );
+    TORCH_CHECK(
+        means.device().type() == at::kXPU,
+        "Input tensors must be on XPU device."
+    );
 
     uint32_t N = means.size(-2);
     uint32_t C = viewmats.size(-3);
@@ -70,43 +80,65 @@ projection_ewa_3dgs_packed_bwd(
     }
 
     if (nnz == 0) {
-        return std::make_tuple(v_means, v_covars, v_quats, v_scales, v_viewmats);
+        return std::make_tuple(
+            v_means, v_covars, v_quats, v_scales, v_viewmats
+        );
     }
-    
-    auto& d_queue = at::xpu::getCurrentXPUStream().queue();
+
+    auto &d_queue = at::xpu::getCurrentXPUStream().queue();
     sycl::range<1> local_range(256);
-    sycl::range<1> global_range((nnz + local_range[0] - 1) / local_range[0] * local_range[0]);
+    sycl::range<1> global_range(
+        (nnz + local_range[0] - 1) / local_range[0] * local_range[0]
+    );
     sycl::nd_range<1> range(global_range, local_range);
 
-    AT_DISPATCH_FLOATING_TYPES(means.scalar_type(), "projection_ewa_3dgs_packed_bwd_kernel", [&] {
-        PackedProjectionBwdKernel<scalar_t> kernel(
-            B, C, N, nnz,
-            means.data_ptr<scalar_t>(),
-            covars.has_value() ? covars.value().data_ptr<scalar_t>() : nullptr,
-            covars.has_value() ? nullptr : quats.value().data_ptr<scalar_t>(),
-            covars.has_value() ? nullptr : scales.value().data_ptr<scalar_t>(),
-            viewmats.data_ptr<scalar_t>(),
-            Ks.data_ptr<scalar_t>(),
-            image_width, image_height, (scalar_t)eps2d, camera_model,
-            batch_ids.data_ptr<int64_t>(),
-            camera_ids.data_ptr<int64_t>(),
-            gaussian_ids.data_ptr<int64_t>(),
-            conics.data_ptr<scalar_t>(),
-            compensations.has_value() ? compensations.value().data_ptr<scalar_t>() : nullptr,
-            v_means2d.data_ptr<scalar_t>(),
-            v_depths.data_ptr<scalar_t>(),
-            v_conics.data_ptr<scalar_t>(),
-            v_compensations.has_value() ? v_compensations.value().data_ptr<scalar_t>() : nullptr,
-            sparse_grad,
-            v_means.data_ptr<scalar_t>(),
-            covars.has_value() ? v_covars.data_ptr<scalar_t>() : nullptr,
-            covars.has_value() ? nullptr : v_quats.data_ptr<scalar_t>(),
-            covars.has_value() ? nullptr : v_scales.data_ptr<scalar_t>(),
-            viewmats_requires_grad ? v_viewmats.data_ptr<scalar_t>() : nullptr
-        );
-        auto e = d_queue.parallel_for(range, kernel);
-        e.wait();
-    });
+    AT_DISPATCH_FLOATING_TYPES(
+        means.scalar_type(),
+        "projection_ewa_3dgs_packed_bwd_kernel",
+        [&] {
+            PackedProjectionBwdKernel<scalar_t> kernel(
+                B,
+                C,
+                N,
+                nnz,
+                means.data_ptr<scalar_t>(),
+                covars.has_value() ? covars.value().data_ptr<scalar_t>()
+                                   : nullptr,
+                covars.has_value() ? nullptr
+                                   : quats.value().data_ptr<scalar_t>(),
+                covars.has_value() ? nullptr
+                                   : scales.value().data_ptr<scalar_t>(),
+                viewmats.data_ptr<scalar_t>(),
+                Ks.data_ptr<scalar_t>(),
+                image_width,
+                image_height,
+                (scalar_t)eps2d,
+                camera_model,
+                batch_ids.data_ptr<int64_t>(),
+                camera_ids.data_ptr<int64_t>(),
+                gaussian_ids.data_ptr<int64_t>(),
+                conics.data_ptr<scalar_t>(),
+                compensations.has_value()
+                    ? compensations.value().data_ptr<scalar_t>()
+                    : nullptr,
+                v_means2d.data_ptr<scalar_t>(),
+                v_depths.data_ptr<scalar_t>(),
+                v_conics.data_ptr<scalar_t>(),
+                v_compensations.has_value()
+                    ? v_compensations.value().data_ptr<scalar_t>()
+                    : nullptr,
+                sparse_grad,
+                v_means.data_ptr<scalar_t>(),
+                covars.has_value() ? v_covars.data_ptr<scalar_t>() : nullptr,
+                covars.has_value() ? nullptr : v_quats.data_ptr<scalar_t>(),
+                covars.has_value() ? nullptr : v_scales.data_ptr<scalar_t>(),
+                viewmats_requires_grad ? v_viewmats.data_ptr<scalar_t>()
+                                       : nullptr
+            );
+            auto e = d_queue.parallel_for(range, kernel);
+            e.wait();
+        }
+    );
 
     return std::make_tuple(v_means, v_covars, v_quats, v_scales, v_viewmats);
 }

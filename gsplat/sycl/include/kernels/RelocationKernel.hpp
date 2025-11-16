@@ -42,8 +42,8 @@ template <typename scalar_t> class RelocationKernel {
             for (int k = 0; k <= (i - 1); ++k) {
                 float bin_coeff = binoms[(i - 1) * n_max + k];
                 float term =
-                    (sycl::pow(-1.0f, k) /
-                     sycl::sqrt(static_cast<float>(k + 1))) *
+                    (sycl::pow(-1.0f, k) / sycl::sqrt(static_cast<float>(k + 1))
+                    ) *
                     sycl::pow(static_cast<float>(new_opacities[idx]), k + 1);
                 denom_sum += (bin_coeff * term);
             }

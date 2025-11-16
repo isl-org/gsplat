@@ -1,11 +1,11 @@
 #include <c10/xpu/XPUStream.h>
 
-#include "Ops.h"
 #include "Common.h"
+#include "Ops.h"
 #include "kernels/Projection2DGSFusedFwdKernel.hpp"
 
 namespace gsplat::xpu {
-    
+
 std::tuple<
     at::Tensor,
     at::Tensor,
@@ -31,11 +31,22 @@ projection_2dgs_fused_fwd(
     CHECK_CONTIGUOUS(viewmats);
     CHECK_CONTIGUOUS(Ks);
 
-    TORCH_CHECK(means.dim() >= 2, "means must have at least 2 dimensions [..., N, 3]");
-    TORCH_CHECK(quats.dim() >= 2, "quats must have at least 2 dimensions [..., N, 4]");
-    TORCH_CHECK(scales.dim() >= 2, "scales must have at least 2 dimensions [..., N, 3]");
-    TORCH_CHECK(viewmats.dim() >= 3, "viewmats must have at least 3 dimensions [..., C, 4, 4]");
-    TORCH_CHECK(Ks.dim() >= 3, "Ks must have at least 3 dimensions [..., C, 3, 3]");
+    TORCH_CHECK(
+        means.dim() >= 2, "means must have at least 2 dimensions [..., N, 3]"
+    );
+    TORCH_CHECK(
+        quats.dim() >= 2, "quats must have at least 2 dimensions [..., N, 4]"
+    );
+    TORCH_CHECK(
+        scales.dim() >= 2, "scales must have at least 2 dimensions [..., N, 3]"
+    );
+    TORCH_CHECK(
+        viewmats.dim() >= 3,
+        "viewmats must have at least 3 dimensions [..., C, 4, 4]"
+    );
+    TORCH_CHECK(
+        Ks.dim() >= 3, "Ks must have at least 3 dimensions [..., C, 3, 3]"
+    );
 
     const uint32_t N = means.size(-2);          // number of gaussians
     const uint32_t C = viewmats.size(-3);       // number of cameras
@@ -57,7 +68,7 @@ projection_2dgs_fused_fwd(
     at::DimVector out_shape_cn3 = batch_dims;
     out_shape_cn3.insert(out_shape_cn3.end(), {C, N, 3});
 
-    // Output shape: [..., C, N, 3, 3] 
+    // Output shape: [..., C, N, 3, 3]
     at::DimVector out_shape_cn33 = batch_dims;
     out_shape_cn33.insert(out_shape_cn33.end(), {C, N, 3, 3});
 
@@ -72,15 +83,18 @@ projection_2dgs_fused_fwd(
         return std::make_tuple(radii, means2d, depths, ray_transforms, normals);
     }
 
-    auto& d_queue = at::xpu::getCurrentXPUStream().queue();
-    
-    auto num_work_groups = (n_elements + GSPLAT_N_THREADS - 1) / GSPLAT_N_THREADS;
+    auto &d_queue = at::xpu::getCurrentXPUStream().queue();
+
+    auto num_work_groups =
+        (n_elements + GSPLAT_N_THREADS - 1) / GSPLAT_N_THREADS;
     sycl::range<1> local_range(GSPLAT_N_THREADS);
     sycl::range<1> global_range(num_work_groups * GSPLAT_N_THREADS);
 
     AT_DISPATCH_FLOATING_TYPES(
-        means.scalar_type(), "projection_2dgs_fused_fwd", [&] {
-            auto e = d_queue.submit([&](sycl::handler& cgh) {
+        means.scalar_type(),
+        "projection_2dgs_fused_fwd",
+        [&] {
+            auto e = d_queue.submit([&](sycl::handler &cgh) {
                 Projection2DGSFusedFwdKernel<scalar_t> kernel(
                     B,
                     C,
@@ -101,10 +115,13 @@ projection_2dgs_fused_fwd(
                     ray_transforms.data_ptr<scalar_t>(),
                     normals.data_ptr<scalar_t>()
                 );
-                cgh.parallel_for(sycl::nd_range<1>(global_range, local_range), kernel);
+                cgh.parallel_for(
+                    sycl::nd_range<1>(global_range, local_range), kernel
+                );
             });
             e.wait();
-        });
+        }
+    );
 
     return std::make_tuple(radii, means2d, depths, ray_transforms, normals);
 }

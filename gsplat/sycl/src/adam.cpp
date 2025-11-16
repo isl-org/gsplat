@@ -1,11 +1,11 @@
- 
+
 #include <c10/xpu/XPUStream.h>
 
-#include "Ops.h"
 #include "Common.h"
+#include "Ops.h"
 
-namespace  gsplat::xpu {
-    
+namespace gsplat::xpu {
+
 void adam(
     at::Tensor &param,                    // [..., D]
     const at::Tensor &param_grad,         // [..., D]

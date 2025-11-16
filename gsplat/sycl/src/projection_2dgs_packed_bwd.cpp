@@ -1,11 +1,11 @@
- 
+
 #include <c10/xpu/XPUStream.h>
 
-#include "Ops.h"
 #include "Common.h"
+#include "Ops.h"
 
-namespace  gsplat::xpu {
-    
+namespace gsplat::xpu {
+
 std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor>
 projection_2dgs_packed_bwd(
     // fwd inputs
@@ -17,9 +17,9 @@ projection_2dgs_packed_bwd(
     const uint32_t image_width,
     const uint32_t image_height,
     // fwd outputs
-    const at::Tensor batch_ids,    // [nnz]
-    const at::Tensor camera_ids,   // [nnz]
-    const at::Tensor gaussian_ids, // [nnz]
+    const at::Tensor batch_ids,      // [nnz]
+    const at::Tensor camera_ids,     // [nnz]
+    const at::Tensor gaussian_ids,   // [nnz]
     const at::Tensor ray_transforms, // [nnz, 3, 3]
     // grad outputs
     const at::Tensor v_means2d,        // [nnz, 2]

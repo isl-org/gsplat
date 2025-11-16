@@ -25,7 +25,7 @@ if not has_cuda:
     try:
         import torch
 
-        has_xpu = has_cuda and hasattr(torch, 'xpu') and torch.xpu.is_available()
+        has_xpu = has_cuda and hasattr(torch, "xpu") and torch.xpu.is_available()
     except (ImportError, AttributeError):
         pass
 

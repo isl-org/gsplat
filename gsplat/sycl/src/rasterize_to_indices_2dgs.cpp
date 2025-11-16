@@ -1,11 +1,11 @@
- 
+
 #include <c10/xpu/XPUStream.h>
 
-#include "Ops.h"
 #include "Common.h"
+#include "Ops.h"
 
-namespace  gsplat::xpu {
-    
+namespace gsplat::xpu {
+
 std::tuple<at::Tensor, at::Tensor> rasterize_to_indices_2dgs(
     const uint32_t range_start,
     const uint32_t range_end,        // iteration steps

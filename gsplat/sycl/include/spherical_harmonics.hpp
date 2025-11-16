@@ -2,7 +2,6 @@
 #define GSPLAT_SPHERICAL_HARMONICS_SYCL_HPP
 
 #include "types.hpp"
- 
 
 // Evaluate spherical harmonics bases at unit direction for high orders using
 // approach described by Efficient Spherical Harmonic Evaluation, Peter-Pike
@@ -357,6 +356,5 @@ inline void sh_coeffs_to_color_fast_vjp(
         v_dir->z = v_d.z;
     }
 }
-
 
 #endif // GSPLAT_SPHERICAL_HARMONICS_SYCL_HPP

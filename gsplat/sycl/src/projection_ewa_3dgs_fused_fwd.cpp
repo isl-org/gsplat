@@ -83,7 +83,9 @@ projection_ewa_3dgs_fused_fwd(
         sycl::range<1> global_range(num_work_groups * GSPLAT_N_THREADS);
 
         AT_DISPATCH_FLOATING_TYPES(
-            means.scalar_type(), "projection_ewa_3dgs_fused_fwd", [&] {
+            means.scalar_type(),
+            "projection_ewa_3dgs_fused_fwd",
+            [&] {
                 auto e = d_queue.submit([&](sycl::handler &cgh) {
                     FullyFusedProjectionFwdKernel<scalar_t> kernel(
                         B,

@@ -1,10 +1,10 @@
 #include <c10/xpu/XPUStream.h>
 
-#include "Ops.h"
 #include "Common.h"
+#include "Ops.h"
 #include "kernels/FullyFusedProjectionBwdKernel.hpp"
 
-namespace  gsplat::xpu {
+namespace gsplat::xpu {
 
 std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor, at::Tensor>
 projection_ewa_3dgs_fused_bwd(
@@ -32,18 +32,23 @@ projection_ewa_3dgs_fused_bwd(
 ) {
     // Input validation
     CHECK_CONTIGUOUS(means);
-    if (covars.has_value()) CHECK_CONTIGUOUS(covars.value());
-    if (quats.has_value()) CHECK_CONTIGUOUS(quats.value());
-    if (scales.has_value()) CHECK_CONTIGUOUS(scales.value());
+    if (covars.has_value())
+        CHECK_CONTIGUOUS(covars.value());
+    if (quats.has_value())
+        CHECK_CONTIGUOUS(quats.value());
+    if (scales.has_value())
+        CHECK_CONTIGUOUS(scales.value());
     CHECK_CONTIGUOUS(viewmats);
     CHECK_CONTIGUOUS(Ks);
     CHECK_CONTIGUOUS(radii);
     CHECK_CONTIGUOUS(conics);
-    if (compensations.has_value()) CHECK_CONTIGUOUS(compensations.value());
+    if (compensations.has_value())
+        CHECK_CONTIGUOUS(compensations.value());
     CHECK_CONTIGUOUS(v_means2d);
     CHECK_CONTIGUOUS(v_depths);
     CHECK_CONTIGUOUS(v_conics);
-    if (v_compensations.has_value()) CHECK_CONTIGUOUS(v_compensations.value());
+    if (v_compensations.has_value())
+        CHECK_CONTIGUOUS(v_compensations.value());
 
     // Dimensions
     const uint32_t N = means.size(-2);
@@ -53,28 +58,39 @@ projection_ewa_3dgs_fused_bwd(
 
     // Create gradient tensors, initialized to zero
     at::Tensor v_means = at::zeros_like(means);
-    at::Tensor v_covars = covars.has_value() ? at::zeros_like(covars.value()) : at::empty({0}, means.options());
-    at::Tensor v_quats = quats.has_value() ? at::zeros_like(quats.value()) : at::empty({0}, means.options());
-    at::Tensor v_scales = scales.has_value() ? at::zeros_like(scales.value()) : at::empty({0}, means.options());
-    at::Tensor v_viewmats = viewmats_requires_grad ? at::zeros_like(viewmats) : at::empty({0}, means.options());
+    at::Tensor v_covars = covars.has_value() ? at::zeros_like(covars.value())
+                                             : at::empty({0}, means.options());
+    at::Tensor v_quats = quats.has_value() ? at::zeros_like(quats.value())
+                                           : at::empty({0}, means.options());
+    at::Tensor v_scales = scales.has_value() ? at::zeros_like(scales.value())
+                                             : at::empty({0}, means.options());
+    at::Tensor v_viewmats = viewmats_requires_grad
+                                ? at::zeros_like(viewmats)
+                                : at::empty({0}, means.options());
 
     if (n_elements > 0) {
-        auto& d_queue = at::xpu::getCurrentXPUStream().queue();
-        auto num_work_groups = (n_elements + GSPLAT_N_THREADS - 1) / GSPLAT_N_THREADS;
+        auto &d_queue = at::xpu::getCurrentXPUStream().queue();
+        auto num_work_groups =
+            (n_elements + GSPLAT_N_THREADS - 1) / GSPLAT_N_THREADS;
         sycl::range<1> local_range(GSPLAT_N_THREADS);
         sycl::range<1> global_range(num_work_groups * GSPLAT_N_THREADS);
 
         AT_DISPATCH_FLOATING_TYPES(
-            means.scalar_type(), "projection_ewa_3dgs_fused_bwd", [&] {
-                auto e = d_queue.submit([&](sycl::handler& cgh) {
+            means.scalar_type(),
+            "projection_ewa_3dgs_fused_bwd",
+            [&] {
+                auto e = d_queue.submit([&](sycl::handler &cgh) {
                     FullyFusedProjectionBwdKernel<scalar_t> kernel(
                         B,
                         C,
                         N,
                         means.data_ptr<scalar_t>(),
-                        covars.has_value() ? covars.value().data_ptr<scalar_t>() : nullptr,
-                        quats.has_value() ? quats.value().data_ptr<scalar_t>() : nullptr,
-                        scales.has_value() ? scales.value().data_ptr<scalar_t>() : nullptr,
+                        covars.has_value() ? covars.value().data_ptr<scalar_t>()
+                                           : nullptr,
+                        quats.has_value() ? quats.value().data_ptr<scalar_t>()
+                                          : nullptr,
+                        scales.has_value() ? scales.value().data_ptr<scalar_t>()
+                                           : nullptr,
                         viewmats.data_ptr<scalar_t>(),
                         Ks.data_ptr<scalar_t>(),
                         image_width,
@@ -83,21 +99,32 @@ projection_ewa_3dgs_fused_bwd(
                         camera_model,
                         radii.data_ptr<int32_t>(),
                         conics.data_ptr<scalar_t>(),
-                        compensations.has_value() ? compensations.value().data_ptr<scalar_t>() : nullptr,
+                        compensations.has_value()
+                            ? compensations.value().data_ptr<scalar_t>()
+                            : nullptr,
                         v_means2d.data_ptr<scalar_t>(),
                         v_depths.data_ptr<scalar_t>(),
                         v_conics.data_ptr<scalar_t>(),
-                        v_compensations.has_value() ? v_compensations.value().data_ptr<scalar_t>() : nullptr,
+                        v_compensations.has_value()
+                            ? v_compensations.value().data_ptr<scalar_t>()
+                            : nullptr,
                         v_means.data_ptr<scalar_t>(),
-                        covars.has_value() ? v_covars.data_ptr<scalar_t>() : nullptr,
-                        quats.has_value() ? v_quats.data_ptr<scalar_t>() : nullptr,
-                        scales.has_value() ? v_scales.data_ptr<scalar_t>() : nullptr,
-                        viewmats_requires_grad ? v_viewmats.data_ptr<scalar_t>() : nullptr
+                        covars.has_value() ? v_covars.data_ptr<scalar_t>()
+                                           : nullptr,
+                        quats.has_value() ? v_quats.data_ptr<scalar_t>()
+                                          : nullptr,
+                        scales.has_value() ? v_scales.data_ptr<scalar_t>()
+                                           : nullptr,
+                        viewmats_requires_grad ? v_viewmats.data_ptr<scalar_t>()
+                                               : nullptr
                     );
-                    cgh.parallel_for(sycl::nd_range<1>(global_range, local_range), kernel);
+                    cgh.parallel_for(
+                        sycl::nd_range<1>(global_range, local_range), kernel
+                    );
                 });
                 e.wait();
-            });
+            }
+        );
     }
 
     return std::make_tuple(v_means, v_covars, v_quats, v_scales, v_viewmats);

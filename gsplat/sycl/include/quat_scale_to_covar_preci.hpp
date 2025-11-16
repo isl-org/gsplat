@@ -1,9 +1,8 @@
 #ifndef GSPLAT_SYCL_QUAT_SCALE_TO_COVAR_PRECI_HPP
 #define GSPLAT_SYCL_QUAT_SCALE_TO_COVAR_PRECI_HPP
 
-#include "types.hpp"
 #include "quat.hpp"
-
+#include "types.hpp"
 
 template <typename T>
 inline void quat_scale_to_covar_preci(
