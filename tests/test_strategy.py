@@ -8,11 +8,21 @@ pytest <THIS_PY_FILE> -s
 
 import pytest
 import torch
+import gsplat
 
-device = torch.device("cuda:0")
+if gsplat.BACKEND == "sycl":
+    device = torch.device("xpu:0")
+elif gsplat.BACKEND == "cuda":
+    device = torch.device("cuda:0")
+else:
+    device = torch.device("cpu")
+
+requires_backend = pytest.mark.skipif(
+    gsplat.BACKEND not in ("cuda", "sycl"), reason="No CUDA or SYCL backend available"
+)
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
+@requires_backend
 def test_strategy():
     from gsplat.rendering import rasterization
     from gsplat.strategy import DefaultStrategy, MCMCStrategy
@@ -62,7 +72,7 @@ def test_strategy():
     strategy.step_post_backward(params, optimizers, state, step=600, info=info, lr=1e-3)
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
+@requires_backend
 def test_strategy_requires_grad():
     from gsplat.rendering import rasterization
     from gsplat.strategy import DefaultStrategy, MCMCStrategy

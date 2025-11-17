@@ -1,39 +1,36 @@
-#ifndef ComputeShBwdKernel_HPP
-#define ComputeShBwdKernel_HPP
+#pragma once
 
-#include "utils.hpp"
+#include "Sycl_utils.hpp"
 #include "spherical_harmonics.hpp"
 #include "types.hpp"
 
 namespace gsplat::xpu {
 
-template<typename T>
-struct ComputeShBwdKernel{
+template <typename T> struct ComputeShBwdKernel {
     const uint32_t m_N;
     const uint32_t m_K;
     const uint32_t m_degrees_to_use;
-    const vec3<T>* m_dirs; // [N, 3]
-    const T* m_coeffs;     // [N, K, 3]
-    const bool* m_masks;   // [N]
-    const T* m_v_colors;   // [N, 3
-    T* m_v_coeffs;         // [N, K, 3]
-    T* m_v_dirs;           // [N, 3] optional
+    const vec3<T> *m_dirs; // [N, 3]
+    const T *m_coeffs;     // [N, K, 3]
+    const bool *m_masks;   // [N]
+    const T *m_v_colors;   // [N, 3
+    T *m_v_coeffs;         // [N, K, 3]
+    T *m_v_dirs;           // [N, 3] optional
 
     ComputeShBwdKernel(
         const uint32_t N,
         const uint32_t K,
         const uint32_t degrees_to_use,
-        const vec3<T>* dirs,
-        const T* coeffs,
-        const bool* masks,
-        const T* v_colors,
-        T* v_coeffs,
-        T* v_dirs
+        const vec3<T> *dirs,
+        const T *coeffs,
+        const bool *masks,
+        const T *v_colors,
+        T *v_coeffs,
+        T *v_dirs
     )
-    : m_N(N), m_K(K), m_degrees_to_use(degrees_to_use),
-      m_dirs(dirs), m_coeffs(coeffs), m_masks(masks), m_v_colors(v_colors), 
-      m_v_coeffs(v_coeffs), m_v_dirs(v_dirs)
-    {}
+        : m_N(N), m_K(K), m_degrees_to_use(degrees_to_use), m_dirs(dirs),
+          m_coeffs(coeffs), m_masks(masks), m_v_colors(v_colors),
+          m_v_coeffs(v_coeffs), m_v_dirs(v_dirs) {}
 
     void operator()(sycl::nd_item<1> work_item) const {
         uint32_t idx = work_item.get_global_id(0);
@@ -56,14 +53,12 @@ struct ComputeShBwdKernel{
             m_v_dirs == nullptr ? nullptr : &v_dir
         );
 
-        if (m_v_dirs != nullptr){
-            gpuAtomicAdd(m_v_dirs + elem_id*3    , v_dir.x);
-            gpuAtomicAdd(m_v_dirs + elem_id*3 + 1, v_dir.y);
-            gpuAtomicAdd(m_v_dirs + elem_id*3 + 2, v_dir.z);
+        if (m_v_dirs != nullptr) {
+            gpuAtomicAdd(m_v_dirs + elem_id * 3, v_dir.x);
+            gpuAtomicAdd(m_v_dirs + elem_id * 3 + 1, v_dir.y);
+            gpuAtomicAdd(m_v_dirs + elem_id * 3 + 2, v_dir.z);
         }
     }
 };
-
-#endif //ComputeShBwdKernel_HPP
 
 } // namespace  gsplat::xpu

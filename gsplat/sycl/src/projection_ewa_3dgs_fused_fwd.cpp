@@ -1,10 +1,10 @@
 #include <c10/xpu/XPUStream.h>
 
-#include "Ops.h"
 #include "Common.h"
+#include "Ops.h"
 #include "kernels/FullyFusedProjectionFwdKernel.hpp"
 
-namespace  gsplat::xpu {
+namespace gsplat::xpu {
 
 std::tuple<
     at::Tensor,
@@ -32,17 +32,26 @@ projection_ewa_3dgs_fused_fwd(
     CHECK_CONTIGUOUS(means);
     CHECK_CONTIGUOUS(viewmats);
     CHECK_CONTIGUOUS(Ks);
-    if (covars.has_value()) CHECK_CONTIGUOUS(covars.value());
-    if (quats.has_value()) CHECK_CONTIGUOUS(quats.value());
-    if (scales.has_value()) CHECK_CONTIGUOUS(scales.value());
-    if (opacities.has_value()) CHECK_CONTIGUOUS(opacities.value());
+    if (covars.has_value())
+        CHECK_CONTIGUOUS(covars.value());
+    if (quats.has_value())
+        CHECK_CONTIGUOUS(quats.value());
+    if (scales.has_value())
+        CHECK_CONTIGUOUS(scales.value());
+    if (opacities.has_value())
+        CHECK_CONTIGUOUS(opacities.value());
 
-    TORCH_CHECK(means.dim() >= 2, "means must have at least 2 dimensions [..., N, 3]");
-    TORCH_CHECK(viewmats.dim() >= 3, "viewmats must have at least 3 dimensions [..., C, 4, 4]");
+    TORCH_CHECK(
+        means.dim() >= 2, "means must have at least 2 dimensions [..., N, 3]"
+    );
+    TORCH_CHECK(
+        viewmats.dim() >= 3,
+        "viewmats must have at least 3 dimensions [..., C, 4, 4]"
+    );
 
-    const uint32_t N = means.size(-2);
-    const uint32_t C = viewmats.size(-3);
-    const uint32_t B = means.numel() / (N * 3);
+    const uint32_t N = means.size(-2);          // number of gaussians
+    const uint32_t C = viewmats.size(-3);       // number of cameras
+    const uint32_t B = means.numel() / (N * 3); // number of batches
     const int64_t n_elements = B * C * N;
 
     auto options = means.options();
@@ -64,25 +73,34 @@ projection_ewa_3dgs_fused_fwd(
     at::Tensor compensations = at::empty(out_shape_cn, options);
 
     if (n_elements > 0) {
-        auto& d_queue = at::xpu::getCurrentXPUStream().queue();
-        const auto dev_id = d_queue.get_device().get_info<sycl::info::device::driver_version>();
+        auto &d_queue = at::xpu::getCurrentXPUStream().queue();
+        const auto dev_id =
+            d_queue.get_device().get_info<sycl::info::device::driver_version>();
 
-        auto num_work_groups = (n_elements + GSPLAT_N_THREADS - 1) / GSPLAT_N_THREADS;
+        auto num_work_groups =
+            (n_elements + GSPLAT_N_THREADS - 1) / GSPLAT_N_THREADS;
         sycl::range<1> local_range(GSPLAT_N_THREADS);
         sycl::range<1> global_range(num_work_groups * GSPLAT_N_THREADS);
 
         AT_DISPATCH_FLOATING_TYPES(
-            means.scalar_type(), "projection_ewa_3dgs_fused_fwd", [&] {
-                auto e = d_queue.submit([&](sycl::handler& cgh) {
+            means.scalar_type(),
+            "projection_ewa_3dgs_fused_fwd",
+            [&] {
+                auto e = d_queue.submit([&](sycl::handler &cgh) {
                     FullyFusedProjectionFwdKernel<scalar_t> kernel(
                         B,
                         C,
                         N,
                         means.data_ptr<scalar_t>(),
-                        covars.has_value() ? covars.value().data_ptr<scalar_t>() : nullptr,
-                        quats.has_value() ? quats.value().data_ptr<scalar_t>() : nullptr,
-                        scales.has_value() ? scales.value().data_ptr<scalar_t>() : nullptr,
-                        opacities.has_value() ? opacities.value().data_ptr<scalar_t>() : nullptr,
+                        covars.has_value() ? covars.value().data_ptr<scalar_t>()
+                                           : nullptr,
+                        quats.has_value() ? quats.value().data_ptr<scalar_t>()
+                                          : nullptr,
+                        scales.has_value() ? scales.value().data_ptr<scalar_t>()
+                                           : nullptr,
+                        opacities.has_value()
+                            ? opacities.value().data_ptr<scalar_t>()
+                            : nullptr,
                         viewmats.data_ptr<scalar_t>(),
                         Ks.data_ptr<scalar_t>(),
                         image_width,
@@ -96,12 +114,16 @@ projection_ewa_3dgs_fused_fwd(
                         means2d.data_ptr<scalar_t>(),
                         depths.data_ptr<scalar_t>(),
                         conics.data_ptr<scalar_t>(),
-                        calc_compensations ? compensations.data_ptr<scalar_t>() : nullptr
+                        calc_compensations ? compensations.data_ptr<scalar_t>()
+                                           : nullptr
                     );
-                    cgh.parallel_for(sycl::nd_range<1>(global_range, local_range), kernel);
+                    cgh.parallel_for(
+                        sycl::nd_range<1>(global_range, local_range), kernel
+                    );
                 });
                 e.wait();
-            });
+            }
+        );
     }
 
     return std::make_tuple(radii, means2d, depths, conics, compensations);

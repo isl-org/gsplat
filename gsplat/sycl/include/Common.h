@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <glm/gtc/type_ptr.hpp>
 
-namespace  gsplat::xpu {
+namespace gsplat::xpu {
 
 //
 // Some Macros.
@@ -15,7 +15,6 @@ namespace  gsplat::xpu {
 #define CHECK_INPUT(x)                                                         \
     CHECK_XPU(x);                                                              \
     CHECK_CONTIGUOUS(x)
-
 
 //
 // Legacy Camera Types

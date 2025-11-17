@@ -11,7 +11,7 @@ import time
 import torch
 from typing_extensions import Callable, Literal
 
-from gsplat import torch_acc, BACKEND 
+from gsplat import torch_acc, BACKEND
 from gsplat._helper import load_test_data
 from gsplat.distributed import cli
 from gsplat.rendering import rasterization

@@ -1,9 +1,9 @@
 #include <c10/xpu/XPUStream.h>
 
-#include <cmath> 
+#include <cmath>
 
-#include "Ops.h"
 #include "Common.h"
+#include "Ops.h"
 #include "kernels/IsectOffsetEncodeKernel.hpp"
 
 namespace gsplat::xpu {
@@ -26,32 +26,30 @@ at::Tensor intersect_offset(
         const uint32_t n_tiles = tile_width * tile_height;
         const uint32_t tile_n_bits = (uint32_t)floor(log2(n_tiles)) + 1;
 
-        auto& d_queue = at::xpu::getCurrentXPUStream().queue();
+        auto &d_queue = at::xpu::getCurrentXPUStream().queue();
 
-        size_t numWorkGrps = (n_isects + GSPLAT_N_THREADS - 1) / GSPLAT_N_THREADS;
+        size_t numWorkGrps =
+            (n_isects + GSPLAT_N_THREADS - 1) / GSPLAT_N_THREADS;
         sycl::range<1> localRange(GSPLAT_N_THREADS);
         sycl::range<1> globalRange(GSPLAT_N_THREADS * numWorkGrps);
         sycl::nd_range<1> range(globalRange, localRange);
-        
-        auto e = d_queue.submit(
-            [&](sycl::handler& cgh)
-            {
-                IsectOffsetEncodeKernel kernel(
-                    n_isects,
-                    isect_ids.data_ptr<int64_t>(),
-                    C,
-                    n_tiles,
-                    tile_n_bits,
-                    offsets.data_ptr<int32_t>()
-                );
-                cgh.parallel_for(range, kernel);
-            }
-        );
+
+        auto e = d_queue.submit([&](sycl::handler &cgh) {
+            IsectOffsetEncodeKernel kernel(
+                n_isects,
+                isect_ids.data_ptr<int64_t>(),
+                C,
+                n_tiles,
+                tile_n_bits,
+                offsets.data_ptr<int32_t>()
+            );
+            cgh.parallel_for(range, kernel);
+        });
         e.wait();
     } else {
         offsets.fill_(0);
     }
-    
+
     return offsets;
 }
 

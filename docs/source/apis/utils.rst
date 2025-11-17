@@ -27,8 +27,6 @@ Below are the basic functions that supports the rasterization.
 
 .. autofunction:: rasterize_to_indices_in_range
 
-.. autofunction:: accumulate
-
 .. autofunction:: rasterization_inria_wrapper
 
 2DGS
@@ -40,7 +38,5 @@ Below are the basic functions that supports the rasterization.
 .. autofunction:: rasterize_to_pixels_2dgs
 
 .. autofunction:: rasterize_to_indices_in_range_2dgs
-
-.. autofunction:: accumulate_2dgs
 
 .. autofunction:: rasterization_2dgs_inria_wrapper

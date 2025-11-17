@@ -1,9 +1,7 @@
-#ifndef IsectTilesKernel_HPP
-#define IsectTilesKernel_HPP
+#pragma once
 
- 
-#include "types.hpp"
 #include "transform.hpp"
+#include "types.hpp"
 #include "utils.hpp"
 #include <algorithm>
 
@@ -14,65 +12,53 @@ struct uint2 {
     uint32_t y;
 };
 
-template<typename T>
-struct IsectTilesKernel {
+template <typename T> struct IsectTilesKernel {
     const bool m_packed;
     const uint32_t m_C;
     const uint32_t m_N;
     const uint32_t m_nnz;
-    const int64_t* m_camera_ids;   // [nnz] optional
-    const int64_t* m_gaussian_ids; // [nnz] optional
-    const T* m_means2d;                   // [C, N, 2] or [nnz, 2]
-    const int32_t* m_radii;               // [C, N] or [nnz]
-    const T* m_depths;                    // [C, N] or [nnz]
-    const int64_t* m_cum_tiles_per_gauss; // [C, N] or [nnz]
+    const int64_t *m_camera_ids;          // [nnz] optional
+    const int64_t *m_gaussian_ids;        // [nnz] optional
+    const T *m_means2d;                   // [C, N, 2] or [nnz, 2]
+    const int32_t *m_radii;               // [C, N] or [nnz]
+    const T *m_depths;                    // [C, N] or [nnz]
+    const int64_t *m_cum_tiles_per_gauss; // [C, N] or [nnz]
     const uint32_t m_tile_size;
     const uint32_t m_tile_width;
     const uint32_t m_tile_height;
     const uint32_t m_tile_n_bits;
-    int32_t* m_tiles_per_gauss; // [C, N] or [nnz]
-    int64_t* m_isect_ids;       // [n_isects]
-    int32_t* m_flatten_ids;      // [n_isects]
+    int32_t *m_tiles_per_gauss; // [C, N] or [nnz]
+    int64_t *m_isect_ids;       // [n_isects]
+    int32_t *m_flatten_ids;     // [n_isects]
 
     IsectTilesKernel(
         const bool packed,
         const uint32_t C,
         const uint32_t N,
         const uint32_t nnz,
-        const int64_t* camera_ids,
-        const int64_t* gaussian_ids,
-        const T* means2d,
-        const int32_t* radii,
-        const T* depths,
-        const int64_t* cum_tiles_per_gauss,
+        const int64_t *camera_ids,
+        const int64_t *gaussian_ids,
+        const T *means2d,
+        const int32_t *radii,
+        const T *depths,
+        const int64_t *cum_tiles_per_gauss,
         const uint32_t tile_size,
         const uint32_t tile_width,
         const uint32_t tile_height,
         const uint32_t tile_n_bits,
-        int32_t* tiles_per_gauss,
-        int64_t* isect_ids,
-        int32_t* flatten_ids
-    ) : 
-        m_packed(packed),
-        m_C(C),
-        m_N(N),
-        m_nnz(nnz),
-        m_camera_ids(camera_ids),
-        m_gaussian_ids(gaussian_ids),
-        m_means2d(means2d),
-        m_radii(radii),
-        m_depths(depths),
-        m_cum_tiles_per_gauss(cum_tiles_per_gauss),
-        m_tile_size(tile_size),
-        m_tile_width(tile_width),
-        m_tile_height(tile_height),
-        m_tile_n_bits(tile_n_bits),
-        m_tiles_per_gauss(tiles_per_gauss),
-        m_isect_ids(isect_ids),
-        m_flatten_ids(flatten_ids)
-    {}
+        int32_t *tiles_per_gauss,
+        int64_t *isect_ids,
+        int32_t *flatten_ids
+    )
+        : m_packed(packed), m_C(C), m_N(N), m_nnz(nnz),
+          m_camera_ids(camera_ids), m_gaussian_ids(gaussian_ids),
+          m_means2d(means2d), m_radii(radii), m_depths(depths),
+          m_cum_tiles_per_gauss(cum_tiles_per_gauss), m_tile_size(tile_size),
+          m_tile_width(tile_width), m_tile_height(tile_height),
+          m_tile_n_bits(tile_n_bits), m_tiles_per_gauss(tiles_per_gauss),
+          m_isect_ids(isect_ids), m_flatten_ids(flatten_ids) {}
 
-    void operator()(sycl::nd_item<1> work_item)  const {
+    void operator()(sycl::nd_item<1> work_item) const {
         uint32_t idx = work_item.get_global_id(0);
 
         bool first_pass = m_cum_tiles_per_gauss == nullptr;
@@ -98,10 +84,30 @@ struct IsectTilesKernel {
 
         uint2 tile_min, tile_max;
         // Use the separate x and y tile radii to calculate the bounding box.
-        tile_min.x = sycl::min(sycl::max((uint32_t)0, (uint32_t)sycl::floor(tile_x - tile_radius_x)), m_tile_width);
-        tile_min.y = sycl::min(sycl::max((uint32_t)0, (uint32_t)sycl::floor(tile_y - tile_radius_y)), m_tile_height);
-        tile_max.x = sycl::min(sycl::max((uint32_t)0, (uint32_t)sycl::ceil(tile_x + tile_radius_x)), m_tile_width);
-        tile_max.y = sycl::min(sycl::max((uint32_t)0, (uint32_t)sycl::ceil(tile_y + tile_radius_y)), m_tile_height);
+        tile_min.x = sycl::min(
+            sycl::max(
+                (uint32_t)0, (uint32_t)sycl::floor(tile_x - tile_radius_x)
+            ),
+            m_tile_width
+        );
+        tile_min.y = sycl::min(
+            sycl::max(
+                (uint32_t)0, (uint32_t)sycl::floor(tile_y - tile_radius_y)
+            ),
+            m_tile_height
+        );
+        tile_max.x = sycl::min(
+            sycl::max(
+                (uint32_t)0, (uint32_t)sycl::ceil(tile_x + tile_radius_x)
+            ),
+            m_tile_width
+        );
+        tile_max.y = sycl::min(
+            sycl::max(
+                (uint32_t)0, (uint32_t)sycl::ceil(tile_y + tile_radius_y)
+            ),
+            m_tile_height
+        );
 
         if (first_pass) {
             // first pass only writes out tiles_per_gauss
@@ -124,9 +130,9 @@ struct IsectTilesKernel {
 
         const int64_t cid_enc = cid << (32 + m_tile_n_bits);
 
-        int32_t depth_i32 = *reinterpret_cast<const int32_t*>(&m_depths[idx]);
+        int32_t depth_i32 = *reinterpret_cast<const int32_t *>(&m_depths[idx]);
         int64_t depth_id_enc = static_cast<uint32_t>(depth_i32);
-        
+
         int64_t cur_idx = (idx == 0) ? 0 : m_cum_tiles_per_gauss[idx - 1];
         for (int32_t i = tile_min.y; i < tile_max.y; ++i) {
             for (int32_t j = tile_min.x; j < tile_max.x; ++j) {
@@ -141,7 +147,5 @@ struct IsectTilesKernel {
         }
     }
 };
-
-#endif //IsectTilesKernel_HPP
 
 } // namespace  gsplat::xpu

@@ -1,71 +1,63 @@
 import os
 import sys
 import torch
-import warnings
 
 BACKEND: str = ""
+torch_acc = torch.cpu
+_force_backend = os.getenv("GSPLAT_BACKEND", "").lower()
 
-FORCE_BACKEND = os.getenv("GSPLAT_BACKEND", "").lower()
+from .cuda._wrapper import (  # Default to CUDA imports, works even if no CUDA is available
+    RollingShutterType,
+    fully_fused_projection,
+    fully_fused_projection_2dgs,
+    fully_fused_projection_with_ut,
+    isect_offset_encode,
+    isect_tiles,
+    proj,
+    quat_scale_to_covar_preci,
+    rasterize_to_indices_in_range,
+    rasterize_to_indices_in_range_2dgs,
+    rasterize_to_pixels,
+    rasterize_to_pixels_2dgs,
+    rasterize_to_pixels_eval3d,
+    spherical_harmonics,
+    world_to_cam,
+)
 
-if FORCE_BACKEND == "cuda" or (FORCE_BACKEND == "" and torch.cuda.is_available()):
-    try:
-        BACKEND = "cuda"
-        from .cuda._wrapper import (
-            RollingShutterType,
-            fully_fused_projection,
-            fully_fused_projection_2dgs,
-            fully_fused_projection_with_ut,
-            isect_offset_encode,
-            isect_tiles,
-            proj,
-            quat_scale_to_covar_preci,
-            rasterize_to_indices_in_range,
-            rasterize_to_indices_in_range_2dgs,
-            rasterize_to_pixels,
-            rasterize_to_pixels_2dgs,
-            rasterize_to_pixels_eval3d,
-            spherical_harmonics,
-            world_to_cam,
-        )
-        torch_acc = torch.cuda
-        print("gsplat: CUDA backend successfully loaded.", file=sys.stderr)
-    except ImportError:
-        if FORCE_BACKEND == "cuda":
-            print("gsplat: Error! GSPLAT_BACKEND=cuda was set but CUDA backend failed to load.", file=sys.stderr)
-        pass
+if _force_backend == "cuda" or (_force_backend == "" and torch.cuda.is_available()):
+    BACKEND = "cuda"
+    torch_acc = torch.cuda
+    print("gsplat: Using CUDA backend.", file=sys.stderr)
+    # Functions already imported above
 
-if not BACKEND and (FORCE_BACKEND == "sycl" or FORCE_BACKEND == ""):
-    try:
-        BACKEND = "sycl"
-        from .sycl._wrapper import (
-            RollingShutterType,
-            fully_fused_projection,
-            fully_fused_projection_2dgs,
-            fully_fused_projection_with_ut,
-            isect_offset_encode,
-            isect_tiles,
-            proj,
-            quat_scale_to_covar_preci,
-            rasterize_to_indices_in_range,
-            rasterize_to_indices_in_range_2dgs,
-            rasterize_to_pixels,
-            rasterize_to_pixels_2dgs,
-            rasterize_to_pixels_eval3d,
-            spherical_harmonics,
-            world_to_cam,
-        )
-        torch_acc = torch.xpu
-        print("gsplat: SYCL backend successfully loaded.", file=sys.stderr)
-    except ImportError as e:
-        if FORCE_BACKEND == "sycl":
-            print(f"gsplat: Error! GSPLAT_BACKEND=sycl was set but SYCL backend failed to load: {e}", file=sys.stderr)
-        pass
-
-if not BACKEND:
-    print(
-        "gsplat: Warning! No high-performance backend (CUDA or SYCL) found.",
-        file=sys.stderr,
+if (
+    not BACKEND
+    and _force_backend in ("sycl", "xpu")
+    or _force_backend == ""
+    and hasattr(torch, "xpu")
+    and torch.xpu.is_available()
+):
+    from .sycl._wrapper import (  # Overwrite imports for SYCL backend
+        RollingShutterType,
+        fully_fused_projection,
+        fully_fused_projection_2dgs,
+        fully_fused_projection_with_ut,
+        isect_offset_encode,
+        isect_tiles,
+        proj,
+        quat_scale_to_covar_preci,
+        rasterize_to_indices_in_range,
+        rasterize_to_indices_in_range_2dgs,
+        rasterize_to_pixels,
+        rasterize_to_pixels_2dgs,
+        rasterize_to_pixels_eval3d,
+        spherical_harmonics,
+        world_to_cam,
     )
+
+    BACKEND = "sycl"
+    torch_acc = torch.xpu
+    print("gsplat: Using SYCL XPU backend.", file=sys.stderr)
 
 
 from .compression import PngCompression

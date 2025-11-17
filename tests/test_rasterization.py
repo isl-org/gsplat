@@ -11,10 +11,23 @@ from typing import Optional, Tuple
 import pytest
 import torch
 
-device = torch.device("cuda:0")
+# device = torch.device("cuda:0")
+import gsplat
+
+if gsplat.BACKEND == "sycl":
+    device = torch.device("xpu:0")
+elif gsplat.BACKEND == "cuda":
+    device = torch.device("cuda:0")
+else:
+    device = None
+
+requires_backend = pytest.mark.skipif(
+    gsplat.BACKEND not in ("cuda", "sycl"),
+    reason="No CUDA or SYCL XPU backend available",
+)
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
+@requires_backend
 @pytest.mark.parametrize("per_view_color", [True, False])
 @pytest.mark.parametrize("sh_degree", [None, 3])
 @pytest.mark.parametrize("render_mode", ["RGB", "RGB+D", "D"])
@@ -81,18 +94,19 @@ def test_rasterization(
     elif render_mode == "RGB+D":
         assert renders.shape == batch_dims + (C, height, width, 4)
 
-    _renders, _alphas, _meta = _rasterization(
-        means=means,
-        quats=quats,
-        scales=scales,
-        opacities=opacities,
-        colors=colors,
-        viewmats=viewmats,
-        Ks=Ks,
-        width=width,
-        height=height,
-        sh_degree=sh_degree,
-        render_mode=render_mode,
-    )
-    torch.testing.assert_close(renders, _renders, rtol=1e-4, atol=1e-4)
-    torch.testing.assert_close(alphas, _alphas, rtol=1e-4, atol=1e-4)
+    if gsplat.BACKEND != "sycl":  # nerfacc required for comparison
+        _renders, _alphas, _meta = _rasterization(
+            means=means,
+            quats=quats,
+            scales=scales,
+            opacities=opacities,
+            colors=colors,
+            viewmats=viewmats,
+            Ks=Ks,
+            width=width,
+            height=height,
+            sh_degree=sh_degree,
+            render_mode=render_mode,
+        )
+        torch.testing.assert_close(renders, _renders, rtol=1e-4, atol=1e-4)
+        torch.testing.assert_close(alphas, _alphas, rtol=1e-4, atol=1e-4)

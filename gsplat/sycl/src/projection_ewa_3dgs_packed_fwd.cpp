@@ -1,7 +1,7 @@
 #include <c10/xpu/XPUStream.h>
 
-#include "Ops.h"
 #include "Common.h"
+#include "Ops.h"
 #include "kernels/PackedProjectionFwdKernel.hpp"
 
 namespace gsplat::xpu {
@@ -31,12 +31,19 @@ projection_ewa_3dgs_packed_fwd(
     const float far_plane,
     const float radius_clip,
     const bool calc_compensations,
-    const CameraModelType camera_model) {
-    
-    TORCH_CHECK(means.is_contiguous(), "Input 'means' tensor must be contiguous.");
-    TORCH_CHECK(viewmats.is_contiguous(), "Input 'viewmats' tensor must be contiguous.");
+    const CameraModelType camera_model
+) {
+    TORCH_CHECK(
+        means.is_contiguous(), "Input 'means' tensor must be contiguous."
+    );
+    TORCH_CHECK(
+        viewmats.is_contiguous(), "Input 'viewmats' tensor must be contiguous."
+    );
     TORCH_CHECK(Ks.is_contiguous(), "Input 'Ks' tensor must be contiguous.");
-    TORCH_CHECK(means.device().type() == at::kXPU, "Input tensors must be on XPU device.");
+    TORCH_CHECK(
+        means.device().type() == at::kXPU,
+        "Input tensors must be on XPU device."
+    );
 
     uint32_t N = means.size(-2);
     uint32_t C = viewmats.size(-3);
@@ -64,60 +71,103 @@ projection_ewa_3dgs_packed_fwd(
 
     if (B == 0 || C == 0 || N == 0) {
         return std::make_tuple(
-            batch_ids, camera_ids, gaussian_ids, radii, means2d, depths, conics, indptr, compensations);
+            batch_ids,
+            camera_ids,
+            gaussian_ids,
+            radii,
+            means2d,
+            depths,
+            conics,
+            indptr,
+            compensations
+        );
     }
-    
+
     // --- Start of Correction ---
     // Allocate block_cnts as kInt, which the kernel expects.
     at::Tensor block_cnts = at::empty({(long)n_blocks}, int_opts);
     // --- End of Correction ---
 
-    auto& d_queue = at::xpu::getCurrentXPUStream().queue();
+    auto &d_queue = at::xpu::getCurrentXPUStream().queue();
     sycl::range<2> local_range(1, N_THREADS_PACKED);
     sycl::range<2> global_range(nrows, blocks_per_row * N_THREADS_PACKED);
     sycl::nd_range<2> range(global_range, local_range);
 
     // First pass: count visible Gaussians per block
-    AT_DISPATCH_FLOATING_TYPES(means.scalar_type(), "projection_ewa_3dgs_packed_fwd_kernel_pass1", [&] {
-        d_queue.parallel_for(range, PackedProjectionFwdKernel<scalar_t>(
-            B, C, N,
-            means.data_ptr<scalar_t>(),
-            covars.has_value() ? covars.value().data_ptr<scalar_t>() : nullptr,
-            quats.has_value() ? quats.value().data_ptr<scalar_t>() : nullptr,
-            scales.has_value() ? scales.value().data_ptr<scalar_t>() : nullptr,
-            opacities.has_value() ? opacities.value().data_ptr<scalar_t>() : nullptr,
-            viewmats.data_ptr<scalar_t>(),
-            Ks.data_ptr<scalar_t>(),
-            image_width, image_height,
-            (scalar_t)eps2d, (scalar_t)near_plane, (scalar_t)far_plane, (scalar_t)radius_clip,
-            camera_model,
-            nullptr, // block_accum
-            // --- Start of Correction ---
-            // Pass the int32_t pointer directly, no cast needed.
-            block_cnts.data_ptr<int32_t>(),
-            // --- End of Correction ---
-            nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
-        )).wait();
-    });
+    AT_DISPATCH_FLOATING_TYPES(
+        means.scalar_type(),
+        "projection_ewa_3dgs_packed_fwd_kernel_pass1",
+        [&] {
+            d_queue
+                .parallel_for(
+                    range,
+                    PackedProjectionFwdKernel<scalar_t>(
+                        B,
+                        C,
+                        N,
+                        means.data_ptr<scalar_t>(),
+                        covars.has_value() ? covars.value().data_ptr<scalar_t>()
+                                           : nullptr,
+                        quats.has_value() ? quats.value().data_ptr<scalar_t>()
+                                          : nullptr,
+                        scales.has_value() ? scales.value().data_ptr<scalar_t>()
+                                           : nullptr,
+                        opacities.has_value()
+                            ? opacities.value().data_ptr<scalar_t>()
+                            : nullptr,
+                        viewmats.data_ptr<scalar_t>(),
+                        Ks.data_ptr<scalar_t>(),
+                        image_width,
+                        image_height,
+                        (scalar_t)eps2d,
+                        (scalar_t)near_plane,
+                        (scalar_t)far_plane,
+                        (scalar_t)radius_clip,
+                        camera_model,
+                        nullptr, // block_accum
+                        // --- Start of Correction ---
+                        // Pass the int32_t pointer directly, no cast needed.
+                        block_cnts.data_ptr<int32_t>(),
+                        // --- End of Correction ---
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr
+                    )
+                )
+                .wait();
+        }
+    );
 
     // --- Start of Correction ---
-    // Perform inclusive scan on a kLong version of block_cnts to prevent overflow.
+    // Perform inclusive scan on a kLong version of block_cnts to prevent
+    // overflow.
     at::Tensor block_accum_inclusive = at::cumsum(block_cnts.to(at::kLong), 0);
     // --- End of Correction ---
-    
+
     int64_t nnz = 0;
     if (n_blocks > 0) {
-       nnz = block_accum_inclusive.index({-1}).item<int64_t>();
+        nnz = block_accum_inclusive.index({-1}).item<int64_t>();
     }
 
     if (nnz == 0) {
-         return std::make_tuple(
-            batch_ids, camera_ids, gaussian_ids, radii, means2d, depths, conics, indptr, compensations);
+        return std::make_tuple(
+            batch_ids,
+            camera_ids,
+            gaussian_ids,
+            radii,
+            means2d,
+            depths,
+            conics,
+            indptr,
+            compensations
+        );
     }
-    
-    at::Tensor block_accum_exclusive = at::cat({at::zeros({1}, long_opts), block_accum_inclusive.slice(0, 0, n_blocks - 1)});
-    at::Tensor block_accum_exclusive_int = block_accum_exclusive.to(at::kInt);
-
 
     // Allocate final output tensors
     batch_ids = at::empty({nnz}, long_opts);
@@ -130,34 +180,55 @@ projection_ewa_3dgs_packed_fwd(
     if (calc_compensations) {
         compensations = at::empty({nnz}, float_opts);
     }
-    
+
     // Second pass: write packed data
-    AT_DISPATCH_FLOATING_TYPES(means.scalar_type(), "projection_ewa_3dgs_packed_fwd_kernel_pass2", [&] {
-        d_queue.parallel_for(range, PackedProjectionFwdKernel<scalar_t>(
-            B, C, N,
-            means.data_ptr<scalar_t>(),
-            covars.has_value() ? covars.value().data_ptr<scalar_t>() : nullptr,
-            quats.has_value() ? quats.value().data_ptr<scalar_t>() : nullptr,
-            scales.has_value() ? scales.value().data_ptr<scalar_t>() : nullptr,
-            opacities.has_value() ? opacities.value().data_ptr<scalar_t>() : nullptr,
-            viewmats.data_ptr<scalar_t>(),
-            Ks.data_ptr<scalar_t>(),
-            image_width, image_height,
-            (scalar_t)eps2d, (scalar_t)near_plane, (scalar_t)far_plane, (scalar_t)radius_clip,
-            camera_model,
-            block_accum_exclusive_int.data_ptr<int32_t>(),
-            nullptr, // block_cnts
-            indptr.data_ptr<int32_t>(),
-            batch_ids.data_ptr<int64_t>(),
-            camera_ids.data_ptr<int64_t>(),
-            gaussian_ids.data_ptr<int64_t>(),
-            radii.data_ptr<int32_t>(),
-            means2d.data_ptr<scalar_t>(),
-            depths.data_ptr<scalar_t>(),
-            conics.data_ptr<scalar_t>(),
-            calc_compensations ? compensations.data_ptr<scalar_t>() : nullptr
-        )).wait();
-    });
+    AT_DISPATCH_FLOATING_TYPES(
+        means.scalar_type(),
+        "projection_ewa_3dgs_packed_fwd_kernel_pass2",
+        [&] {
+            d_queue
+                .parallel_for(
+                    range,
+                    PackedProjectionFwdKernel<scalar_t>(
+                        B,
+                        C,
+                        N,
+                        means.data_ptr<scalar_t>(),
+                        covars.has_value() ? covars.value().data_ptr<scalar_t>()
+                                           : nullptr,
+                        quats.has_value() ? quats.value().data_ptr<scalar_t>()
+                                          : nullptr,
+                        scales.has_value() ? scales.value().data_ptr<scalar_t>()
+                                           : nullptr,
+                        opacities.has_value()
+                            ? opacities.value().data_ptr<scalar_t>()
+                            : nullptr,
+                        viewmats.data_ptr<scalar_t>(),
+                        Ks.data_ptr<scalar_t>(),
+                        image_width,
+                        image_height,
+                        (scalar_t)eps2d,
+                        (scalar_t)near_plane,
+                        (scalar_t)far_plane,
+                        (scalar_t)radius_clip,
+                        camera_model,
+                        block_accum_inclusive.data_ptr<int64_t>(),
+                        nullptr, // block_cnts
+                        indptr.data_ptr<int32_t>(),
+                        batch_ids.data_ptr<int64_t>(),
+                        camera_ids.data_ptr<int64_t>(),
+                        gaussian_ids.data_ptr<int64_t>(),
+                        radii.data_ptr<int32_t>(),
+                        means2d.data_ptr<scalar_t>(),
+                        depths.data_ptr<scalar_t>(),
+                        conics.data_ptr<scalar_t>(),
+                        calc_compensations ? compensations.data_ptr<scalar_t>()
+                                           : nullptr
+                    )
+                )
+                .wait();
+        }
+    );
 
     // Set the last element of indptr
     if (nrows > 0) {
@@ -165,7 +236,16 @@ projection_ewa_3dgs_packed_fwd(
     }
 
     return std::make_tuple(
-        batch_ids, camera_ids, gaussian_ids, radii, means2d, depths, conics, indptr, compensations);
+        batch_ids,
+        camera_ids,
+        gaussian_ids,
+        radii,
+        means2d,
+        depths,
+        conics,
+        indptr,
+        compensations
+    );
 }
 
 } // namespace  gsplat::xpu

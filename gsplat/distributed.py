@@ -6,14 +6,16 @@ import torch.distributed as dist
 import torch.distributed.nn.functional as distF
 from torch import Tensor
 
-import gsplat
-from gsplat import torch_acc
+from . import torch_acc, BACKEND
 
 
 def _get_distributed_backend():
-    if gsplat.BACKEND == "sycl":
-        return "ccl"
-    return "nccl"
+    if BACKEND == "sycl":
+        return "xccl"
+    elif BACKEND == "cuda":
+        return "nccl"
+    else:
+        return "gloo"
 
 
 def all_gather_int32(
@@ -45,10 +47,10 @@ def all_gather_int32(
         value_tensor = torch.tensor(value, dtype=torch.int, device=device)
     else:
         value_tensor = value
-    
-    if gsplat.BACKEND == "cuda":
+
+    if BACKEND == "cuda":
         assert value_tensor.is_cuda, "value should be on CUDA"
-    elif gsplat.BACKEND == "sycl":
+    elif BACKEND == "sycl":
         assert value_tensor.is_xpu, "value should be on XPU"
 
     # gather
@@ -333,12 +335,6 @@ def cli(fn: Callable, args: Any, verbose: bool = False) -> bool:
         cli(fn, None, verbose=True)
     ```
     """
-    if gsplat.BACKEND == "cuda":
-        assert torch.cuda.is_available(), "CUDA device is required!"
-    elif gsplat.BACKEND == "sycl":
-        import torch.xpu
-        assert torch.xpu.is_available(), "XPU device is required!"
-
     if "OMPI_COMM_WORLD_SIZE" in os.environ:  # multi-node
         local_rank = int(os.environ["OMPI_COMM_WORLD_LOCAL_RANK"])
         world_size = int(os.environ["OMPI_COMM_WORLD_SIZE"])  # dist.get_world_size()
@@ -346,7 +342,6 @@ def cli(fn: Callable, args: Any, verbose: bool = False) -> bool:
         return _distributed_worker(
             world_rank, world_size, fn, args, local_rank, verbose
         )
-
 
     world_size = torch_acc.device_count()
     distributed = world_size > 1

@@ -20,7 +20,7 @@ from gsplat_viewer import GsplatViewer, GsplatRenderTabState
 
 def main(local_rank: int, world_rank, world_size: int, args):
     torch.manual_seed(42)
-    device = torch.device("cuda", local_rank)
+    device = torch.device(local_rank)
 
     if args.ckpt is None:
         (

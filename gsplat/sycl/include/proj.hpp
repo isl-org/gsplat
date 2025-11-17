@@ -1,8 +1,6 @@
-#ifndef GSPLAT_SYCL_PROJ_HPP
-#define GSPLAT_SYCL_PROJ_HPP
+#pragma once
 
 #include "types.hpp"
-
 
 template <typename T>
 inline void ortho_proj(
@@ -19,7 +17,7 @@ inline void ortho_proj(
     mat2<T> &cov2d,
     vec2<T> &mean2d
 ) {
-    T x = mean3d[0], y = mean3d[1];// z = mean3d[2];
+    T x = mean3d[0], y = mean3d[1]; // z = mean3d[2];
 
     // mat3x2 is 3 columns x 2 rows.
     mat3x2<T> J = mat3x2<T>(
@@ -340,6 +338,3 @@ inline void fisheye_proj_vjp(
     v_mean3d.y += dL_dty_raw;
     v_mean3d.z += dL_dtz_raw;
 }
-
-
-#endif // GSPLAT_SYCL_PROJ_HPP

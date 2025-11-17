@@ -10,20 +10,7 @@ from typing_extensions import Literal
 from . import BACKEND
 
 # Now, conditionally import the functions based on the detected backend.
-if BACKEND == "cuda":
-    from .cuda._wrapper import (
-        RollingShutterType,
-        fully_fused_projection,
-        fully_fused_projection_2dgs,
-        fully_fused_projection_with_ut,
-        isect_offset_encode,
-        isect_tiles,
-        rasterize_to_pixels,
-        rasterize_to_pixels_2dgs,
-        rasterize_to_pixels_eval3d,
-        spherical_harmonics,
-    )
-elif BACKEND == "sycl":
+if BACKEND == "sycl":
     from .sycl._wrapper import (
         RollingShutterType,
         fully_fused_projection,
@@ -36,10 +23,19 @@ elif BACKEND == "sycl":
         rasterize_to_pixels_eval3d,
         spherical_harmonics,
     )
-else:
-    # If no backend is found, you can either raise an error or define dummy functions
-    # to avoid crashing, depending on your needs.
-    raise ImportError("gsplat: No backend (CUDA or SYCL) found, cannot import backend-specific functions.")
+else:  # CUDA or no backend (e.g., CPU only for docs and testing)
+    from .cuda._wrapper import (
+        RollingShutterType,
+        fully_fused_projection,
+        fully_fused_projection_2dgs,
+        fully_fused_projection_with_ut,
+        isect_offset_encode,
+        isect_tiles,
+        rasterize_to_pixels,
+        rasterize_to_pixels_2dgs,
+        rasterize_to_pixels_eval3d,
+        spherical_harmonics,
+    )
 
 from .distributed import (
     all_gather_int32,
@@ -83,7 +79,7 @@ def rasterization(
     radial_coeffs: Optional[Tensor] = None,  # [..., C, 6] or [..., C, 4]
     tangential_coeffs: Optional[Tensor] = None,  # [..., C, 2]
     thin_prism_coeffs: Optional[Tensor] = None,  # [..., C, 4]
-    ftheta_coeffs  = None,
+    ftheta_coeffs=None,
     # rolling shutter
     rolling_shutter: RollingShutterType = RollingShutterType.GLOBAL,
     viewmats_rs: Optional[Tensor] = None,  # [..., C, 4, 4]
@@ -1498,7 +1494,7 @@ def rasterization_2dgs(
         image_ids = None
 
     densify = torch.zeros_like(
-        means2d, dtype=means.dtype, requires_grad=True, device="cuda"
+        means2d, dtype=means.dtype, requires_grad=True, device=means2d.device
     )
     # Identify intersecting tiles
     tile_width = math.ceil(width / float(tile_size))

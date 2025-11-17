@@ -11,17 +11,21 @@ from typing_extensions import Literal
 
 def _make_lazy_sycl_func(name: str) -> Callable:
     """Creates a lazy-loading function for the SYCL backend."""
+
     def call_sycl(*args, **kwargs):
         # pylint: disable=import-outside-toplevel
         from ._backend import _C
+
         return getattr(_C, name)(*args, **kwargs)
+
     return call_sycl
+
 
 def _make_lazy_sycl_obj(name: str) -> Any:
     """Creates a lazy-loading object accessor for the SYCL backend."""
     # pylint: disable=import-outside-toplevel
     from ._backend import _C
-    
+
     obj = _C
     for name_split in name.split("."):
         obj = getattr(obj, name_split)
@@ -316,7 +320,7 @@ def fully_fused_projection(
         an indicator, in which zero radii means the corresponding elements are invalid in
         the output tensors and will be ignored in the next rasterization process. If `packed=True`,
         the output tensors will be packed into a flattened tensor, in which all elements are valid.
-        In this case, a ``batch_ids` tensor and `camera_ids` tensor will be returned to indicate the
+        In this case, a `batch_ids` tensor and `camera_ids` tensor will be returned to indicate the
         batch, camera and gaussian indices of the packed flattened tensor, which is essentially following the
         COO sparse tensor format.
 
@@ -1238,9 +1242,11 @@ def fully_fused_projection_with_ut(
         radial_coeffs.contiguous() if radial_coeffs is not None else None,
         tangential_coeffs.contiguous() if tangential_coeffs is not None else None,
         thin_prism_coeffs.contiguous() if thin_prism_coeffs is not None else None,
-        ftheta_coeffs.to_cpp()
-        if ftheta_coeffs is not None
-        else FThetaCameraDistortionParameters.to_cpp_default(),
+        (
+            ftheta_coeffs.to_cpp()
+            if ftheta_coeffs is not None
+            else FThetaCameraDistortionParameters.to_cpp_default()
+        ),
     )
     if not calc_compensations:
         compensations = None
@@ -2576,7 +2582,7 @@ class _RasterizeToPixels2DGS(torch.autograd.Function):
             v_render_median.contiguous(),
             absgrad,
         )
-        torch.sycl.synchronize()
+        torch.xpu.synchronize()
         if absgrad:
             means2d.absgrad = v_means2d_abs
 
