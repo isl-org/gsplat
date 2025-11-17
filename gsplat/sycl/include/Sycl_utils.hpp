@@ -1,5 +1,4 @@
-#ifndef GSPLAT_SYCL_UTILS
-#define GSPLAT_SYCL_UTILS
+#pragma once
 
 #include <sycl/sycl.hpp>
 
@@ -69,5 +68,3 @@ template <typename T> void gpuAtomicAddLocal(T &ref, const T &value) {
         protected_ref(ref);
     protected_ref.fetch_add(value);
 }
-
-#endif

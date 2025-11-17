@@ -1,7 +1,6 @@
-#ifndef RASTERIZE_TO_PIXELS_2DGS_FWD_KERNEL_HPP
-#define RASTERIZE_TO_PIXELS_2DGS_FWD_KERNEL_HPP
+#pragma once
 
-#include "gsplat_sycl_utils.hpp"
+#include "Sycl_utils.hpp"
 #include "types.hpp"
 #include <sycl/sycl.hpp>
 
@@ -411,5 +410,3 @@ template <uint32_t COLOR_DIM> struct RasterizeToPixels2DGSFwdKernel {
 };
 
 } // namespace gsplat::xpu
-
-#endif // RASTERIZE_TO_PIXELS_2DGS_FWD_KERNEL_HPP

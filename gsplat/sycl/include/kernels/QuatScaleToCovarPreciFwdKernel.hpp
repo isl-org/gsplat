@@ -1,5 +1,4 @@
-#ifndef QuatScaleToCovarPreciFwdKernel_HPP
-#define QuatScaleToCovarPreciFwdKernel_HPP
+#pragma once
 
 #include "quat_scale_to_covar_preci.hpp"
 
@@ -89,6 +88,5 @@ template <typename T> struct QuatScaleToCovarPreciFwdKernel {
         }
     }
 };
-#endif // QuatScaleToCovarPreciFwdKernel_HPP
 
 } // namespace  gsplat::xpu

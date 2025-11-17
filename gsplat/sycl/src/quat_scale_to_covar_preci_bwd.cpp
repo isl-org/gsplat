@@ -40,7 +40,7 @@ std::tuple<at::Tensor, at::Tensor> quat_scale_to_covar_preci_bwd(
     sycl::range<1> globalRange(GSPLAT_N_THREADS * numWorkGrps);
     sycl::nd_range<1> range(globalRange, localRange);
 
-    d_queue.submit([&](sycl::handler &cgh) {
+    auto e = d_queue.submit([&](sycl::handler &cgh) {
         QuatScaleToCovarPreciBwdKernel<float> kernel(
             N,
             quats.data_ptr<float>(),
@@ -53,6 +53,7 @@ std::tuple<at::Tensor, at::Tensor> quat_scale_to_covar_preci_bwd(
         );
         cgh.parallel_for(range, kernel);
     });
+    e.wait();
 
     return std::make_tuple(v_quats, v_scales);
 }

@@ -1,5 +1,4 @@
-#ifndef FullyFusedProjectionFwdKernel_HPP
-#define FullyFusedProjectionFwdKernel_HPP
+#pragma once
 
 #include "proj.hpp"
 #include "quat_scale_to_covar_preci.hpp"
@@ -252,6 +251,5 @@ template <typename T> struct FullyFusedProjectionFwdKernel {
         }
     }
 };
-#endif // FullyFusedProjectionFwdKernel_HPP
 
 } // namespace  gsplat::xpu

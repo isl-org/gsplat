@@ -1,5 +1,4 @@
-#ifndef Projection2DGSFusedFwdKernel_HPP
-#define Projection2DGSFusedFwdKernel_HPP
+#pragma once
 
 #include "quat_scale_to_covar_preci.hpp"
 #include "transform.hpp"
@@ -219,5 +218,3 @@ template <typename T> struct Projection2DGSFusedFwdKernel {
 };
 
 } // namespace gsplat::xpu
-
-#endif // Projection2DGSFusedFwdKernel_HPP

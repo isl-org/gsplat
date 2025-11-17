@@ -1,5 +1,4 @@
-#ifndef PackedProjectionFwdKernel_HPP
-#define PackedProjectionFwdKernel_HPP
+#pragma once
 
 #include "proj.hpp"
 #include "quat_scale_to_covar_preci.hpp"
@@ -325,5 +324,3 @@ template <typename T> struct PackedProjectionFwdKernel {
 };
 
 } // namespace gsplat::xpu
-
-#endif // PackedProjectionFwdKernel_HPP

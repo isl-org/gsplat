@@ -61,8 +61,8 @@ at::Tensor spherical_harmonics_fwd(
         );
         cgh.parallel_for(range, kernel);
     });
-
     e.wait();
+
     return colors;
 }
 

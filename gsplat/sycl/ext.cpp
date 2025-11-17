@@ -1,76 +1,94 @@
 #include <torch/extension.h>
 
-#include "Ops.h"
 #include "Cameras.h"
+#include "Ops.h"
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
-    py::enum_< gsplat::xpu::CameraModelType>(m, "CameraModelType")
-        .value("PINHOLE",  gsplat::xpu::CameraModelType::PINHOLE)
-        .value("ORTHO",  gsplat::xpu::CameraModelType::ORTHO)
-        .value("FISHEYE",  gsplat::xpu::CameraModelType::FISHEYE)
-        .value("FTHETA",  gsplat::xpu::CameraModelType::FTHETA)
+    py::enum_<gsplat::xpu::CameraModelType>(m, "CameraModelType")
+        .value("PINHOLE", gsplat::xpu::CameraModelType::PINHOLE)
+        .value("ORTHO", gsplat::xpu::CameraModelType::ORTHO)
+        .value("FISHEYE", gsplat::xpu::CameraModelType::FISHEYE)
+        .value("FTHETA", gsplat::xpu::CameraModelType::FTHETA)
         .export_values();
 
-    m.def("null", & gsplat::xpu::null);
+    m.def("null", &gsplat::xpu::null);
 
     m.def(
-        "quat_scale_to_covar_preci_fwd", & gsplat::xpu::quat_scale_to_covar_preci_fwd
+        "quat_scale_to_covar_preci_fwd",
+        &gsplat::xpu::quat_scale_to_covar_preci_fwd
     );
     m.def(
-        "quat_scale_to_covar_preci_bwd", & gsplat::xpu::quat_scale_to_covar_preci_bwd
+        "quat_scale_to_covar_preci_bwd",
+        &gsplat::xpu::quat_scale_to_covar_preci_bwd
     );
 
-    m.def("spherical_harmonics_fwd", & gsplat::xpu::spherical_harmonics_fwd);
-    m.def("spherical_harmonics_bwd", & gsplat::xpu::spherical_harmonics_bwd);
+    m.def("spherical_harmonics_fwd", &gsplat::xpu::spherical_harmonics_fwd);
+    m.def("spherical_harmonics_bwd", &gsplat::xpu::spherical_harmonics_bwd);
 
-    m.def("adam", & gsplat::xpu::adam);
-    m.def("relocation", & gsplat::xpu::relocation);
+    m.def("adam", &gsplat::xpu::adam);
+    m.def("relocation", &gsplat::xpu::relocation);
 
-    m.def("intersect_tile", & gsplat::xpu::intersect_tile);
-    m.def("intersect_offset", & gsplat::xpu::intersect_offset);
+    m.def("intersect_tile", &gsplat::xpu::intersect_tile);
+    m.def("intersect_offset", &gsplat::xpu::intersect_offset);
 
-    m.def("projection_ewa_simple_fwd", & gsplat::xpu::projection_ewa_simple_fwd);
-    m.def("projection_ewa_simple_bwd", & gsplat::xpu::projection_ewa_simple_bwd);
+    m.def("projection_ewa_simple_fwd", &gsplat::xpu::projection_ewa_simple_fwd);
+    m.def("projection_ewa_simple_bwd", &gsplat::xpu::projection_ewa_simple_bwd);
     m.def(
-        "projection_ewa_3dgs_fused_fwd", & gsplat::xpu::projection_ewa_3dgs_fused_fwd
+        "projection_ewa_3dgs_fused_fwd",
+        &gsplat::xpu::projection_ewa_3dgs_fused_fwd
     );
     m.def(
-        "projection_ewa_3dgs_fused_bwd", & gsplat::xpu::projection_ewa_3dgs_fused_bwd
+        "projection_ewa_3dgs_fused_bwd",
+        &gsplat::xpu::projection_ewa_3dgs_fused_bwd
     );
     m.def(
         "projection_ewa_3dgs_packed_fwd",
-        & gsplat::xpu::projection_ewa_3dgs_packed_fwd
+        &gsplat::xpu::projection_ewa_3dgs_packed_fwd
     );
     m.def(
         "projection_ewa_3dgs_packed_bwd",
-        & gsplat::xpu::projection_ewa_3dgs_packed_bwd
+        &gsplat::xpu::projection_ewa_3dgs_packed_bwd
     );
 
     m.def(
-        "rasterize_to_pixels_3dgs_fwd", & gsplat::xpu::rasterize_to_pixels_3dgs_fwd
+        "rasterize_to_pixels_3dgs_fwd",
+        &gsplat::xpu::rasterize_to_pixels_3dgs_fwd
     );
     m.def(
-        "rasterize_to_pixels_3dgs_bwd", & gsplat::xpu::rasterize_to_pixels_3dgs_bwd
+        "rasterize_to_pixels_3dgs_bwd",
+        &gsplat::xpu::rasterize_to_pixels_3dgs_bwd
     );
-    m.def("rasterize_to_indices_3dgs", & gsplat::xpu::rasterize_to_indices_3dgs);
+    m.def("rasterize_to_indices_3dgs", &gsplat::xpu::rasterize_to_indices_3dgs);
 
-    m.def("projection_2dgs_fused_fwd", & gsplat::xpu::projection_2dgs_fused_fwd);
-    m.def("projection_2dgs_fused_bwd", & gsplat::xpu::projection_2dgs_fused_bwd);
-    m.def("projection_2dgs_packed_fwd", & gsplat::xpu::projection_2dgs_packed_fwd);
-    m.def("projection_2dgs_packed_bwd", & gsplat::xpu::projection_2dgs_packed_bwd);
-
+    m.def("projection_2dgs_fused_fwd", &gsplat::xpu::projection_2dgs_fused_fwd);
+    m.def("projection_2dgs_fused_bwd", &gsplat::xpu::projection_2dgs_fused_bwd);
     m.def(
-        "rasterize_to_pixels_2dgs_fwd", & gsplat::xpu::rasterize_to_pixels_2dgs_fwd
+        "projection_2dgs_packed_fwd", &gsplat::xpu::projection_2dgs_packed_fwd
     );
     m.def(
-        "rasterize_to_pixels_2dgs_bwd", & gsplat::xpu::rasterize_to_pixels_2dgs_bwd
+        "projection_2dgs_packed_bwd", &gsplat::xpu::projection_2dgs_packed_bwd
     );
-    m.def("rasterize_to_indices_2dgs", & gsplat::xpu::rasterize_to_indices_2dgs);
 
-    m.def("projection_ut_3dgs_fused", & gsplat::xpu::projection_ut_3dgs_fused);
-    m.def("rasterize_to_pixels_from_world_3dgs_fwd", & gsplat::xpu::rasterize_to_pixels_from_world_3dgs_fwd);
-    m.def("rasterize_to_pixels_from_world_3dgs_bwd", & gsplat::xpu::rasterize_to_pixels_from_world_3dgs_bwd);
+    m.def(
+        "rasterize_to_pixels_2dgs_fwd",
+        &gsplat::xpu::rasterize_to_pixels_2dgs_fwd
+    );
+    m.def(
+        "rasterize_to_pixels_2dgs_bwd",
+        &gsplat::xpu::rasterize_to_pixels_2dgs_bwd
+    );
+    m.def("rasterize_to_indices_2dgs", &gsplat::xpu::rasterize_to_indices_2dgs);
+
+    m.def("projection_ut_3dgs_fused", &gsplat::xpu::projection_ut_3dgs_fused);
+    m.def(
+        "rasterize_to_pixels_from_world_3dgs_fwd",
+        &gsplat::xpu::rasterize_to_pixels_from_world_3dgs_fwd
+    );
+    m.def(
+        "rasterize_to_pixels_from_world_3dgs_bwd",
+        &gsplat::xpu::rasterize_to_pixels_from_world_3dgs_bwd
+    );
 
     // Cameras from 3DGUT
     py::enum_<ShutterType>(m, "ShutterType")
@@ -86,19 +104,47 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_readwrite("alpha", &UnscentedTransformParameters::alpha)
         .def_readwrite("beta", &UnscentedTransformParameters::beta)
         .def_readwrite("kappa", &UnscentedTransformParameters::kappa)
-        .def_readwrite("in_image_margin_factor", &UnscentedTransformParameters::in_image_margin_factor)
-        .def_readwrite("require_all_sigma_points_valid", &UnscentedTransformParameters::require_all_sigma_points_valid);
+        .def_readwrite(
+            "in_image_margin_factor",
+            &UnscentedTransformParameters::in_image_margin_factor
+        )
+        .def_readwrite(
+            "require_all_sigma_points_valid",
+            &UnscentedTransformParameters::require_all_sigma_points_valid
+        );
 
     // FTheta Camera support
-    py::enum_<FThetaCameraDistortionParameters::PolynomialType>(m, "FThetaPolynomialType")
-        .value("PIXELDIST_TO_ANGLE", FThetaCameraDistortionParameters::PolynomialType::PIXELDIST_TO_ANGLE)
-        .value("ANGLE_TO_PIXELDIST", FThetaCameraDistortionParameters::PolynomialType::ANGLE_TO_PIXELDIST)
+    py::enum_<FThetaCameraDistortionParameters::PolynomialType>(
+        m, "FThetaPolynomialType"
+    )
+        .value(
+            "PIXELDIST_TO_ANGLE",
+            FThetaCameraDistortionParameters::PolynomialType::PIXELDIST_TO_ANGLE
+        )
+        .value(
+            "ANGLE_TO_PIXELDIST",
+            FThetaCameraDistortionParameters::PolynomialType::ANGLE_TO_PIXELDIST
+        )
         .export_values();
-    py::class_<FThetaCameraDistortionParameters>(m, "FThetaCameraDistortionParameters")
+    py::class_<FThetaCameraDistortionParameters>(
+        m, "FThetaCameraDistortionParameters"
+    )
         .def(py::init<>())
-        .def_readwrite("reference_poly", &FThetaCameraDistortionParameters::reference_poly)
-        .def_readwrite("pixeldist_to_angle_poly", &FThetaCameraDistortionParameters::pixeldist_to_angle_poly)
-        .def_readwrite("angle_to_pixeldist_poly", &FThetaCameraDistortionParameters::angle_to_pixeldist_poly)
-        .def_readwrite("max_angle", &FThetaCameraDistortionParameters::max_angle)
-        .def_readwrite("linear_cde", &FThetaCameraDistortionParameters::linear_cde);
+        .def_readwrite(
+            "reference_poly", &FThetaCameraDistortionParameters::reference_poly
+        )
+        .def_readwrite(
+            "pixeldist_to_angle_poly",
+            &FThetaCameraDistortionParameters::pixeldist_to_angle_poly
+        )
+        .def_readwrite(
+            "angle_to_pixeldist_poly",
+            &FThetaCameraDistortionParameters::angle_to_pixeldist_poly
+        )
+        .def_readwrite(
+            "max_angle", &FThetaCameraDistortionParameters::max_angle
+        )
+        .def_readwrite(
+            "linear_cde", &FThetaCameraDistortionParameters::linear_cde
+        );
 }

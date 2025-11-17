@@ -1,5 +1,4 @@
-#ifndef IsectOffsetEncodeKernel_HPP
-#define IsectOffsetEncodeKernel_HPP
+#pragma once
 
 namespace gsplat::xpu {
 
@@ -62,7 +61,5 @@ struct IsectOffsetEncodeKernel {
         }
     }
 };
-
-#endif
 
 } // namespace  gsplat::xpu

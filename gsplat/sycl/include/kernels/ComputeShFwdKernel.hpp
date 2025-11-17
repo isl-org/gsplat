@@ -1,5 +1,4 @@
-#ifndef ComputeShFwdKernel_HPP
-#define ComputeShFwdKernel_HPP
+#pragma once
 
 #include "spherical_harmonics.hpp"
 
@@ -45,7 +44,5 @@ template <typename T> struct ComputeShFwdKernel {
         );
     }
 };
-
-#endif // ComputeShFwdKernel_HPP
 
 } // namespace  gsplat::xpu

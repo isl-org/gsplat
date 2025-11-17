@@ -1,19 +1,8 @@
-#ifndef GSPLAT_SYCL_UTILS_HPP
-#define GSPLAT_SYCL_UTILS_HPP
+#pragma once
 
 #include "types.hpp"
 
 #include <sycl/sycl.hpp>
-
-template <typename T> void gpuAtomicAdd(T *ptr, T value) {
-    sycl::atomic_ref<
-        T,
-        sycl::memory_order::relaxed,
-        sycl::memory_scope::device,
-        sycl::access::address_space::global_space>
-        protected_ref(*ptr);
-    protected_ref.fetch_add(value);
-}
 
 template <typename T> inline T inverse(const mat2<T> M, mat2<T> &Minv) {
     T det = M[0][0] * M[1][1] - M[0][1] * M[1][0];
@@ -81,5 +70,3 @@ inline void add_blur_vjp(
     v_covar[1][1] += v_sqr_comp * (one_minus_sqr_comp * conic_blur[1][1] -
                                    eps2d * det_conic_blur);
 }
-
-#endif // GSPLAT_SYCL_UTILS_HPP

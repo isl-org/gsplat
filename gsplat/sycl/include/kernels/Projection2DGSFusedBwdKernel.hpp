@@ -1,6 +1,6 @@
-#ifndef Projection2DGSFusedBwdKernel_HPP
-#define Projection2DGSFusedBwdKernel_HPP
+#pragma once
 
+#include "Sycl_utils.hpp"
 #include "quat_scale_to_covar_preci.hpp"
 #include "transform.hpp"
 #include "utils.hpp"
@@ -304,5 +304,3 @@ template <typename T> struct Projection2DGSFusedBwdKernel {
 };
 
 } // namespace gsplat::xpu
-
-#endif // Projection2DGSFusedBwdKernel_HPP

@@ -1,7 +1,6 @@
-#ifndef RasterizeToPixelsBwdKernel_HPP
-#define RasterizeToPixelsBwdKernel_HPP
+#pragma once
 
-#include "gsplat_sycl_utils.hpp"
+#include "Sycl_utils.hpp"
 #include "types.hpp"
 #include <algorithm>
 
@@ -444,7 +443,5 @@ struct RasterizeToPixelsBwdKernel {
         }
     }
 };
-
-#endif // RasterizeToPixelsBwdKernel_HPP
 
 } // namespace  gsplat::xpu

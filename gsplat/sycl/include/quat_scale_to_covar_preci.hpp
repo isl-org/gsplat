@@ -1,5 +1,4 @@
-#ifndef GSPLAT_SYCL_QUAT_SCALE_TO_COVAR_PRECI_HPP
-#define GSPLAT_SYCL_QUAT_SCALE_TO_COVAR_PRECI_HPP
+#pragma once
 
 #include "quat.hpp"
 #include "types.hpp"
@@ -120,5 +119,3 @@ inline void quat_scale_to_preci_vjp(
         -sz * sz *
         (R[2][0] * v_M[2][0] + R[2][1] * v_M[2][1] + R[2][2] * v_M[2][2]);
 }
-
-#endif // GSPLAT_SYCL_QUAT_SCALE_TO_COVAR_PRECI_HPP

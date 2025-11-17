@@ -1,5 +1,4 @@
-#ifndef GSPLAT_SYCL_TRANSFORM_HPP
-#define GSPLAT_SYCL_TRANSFORM_HPP
+#pragma once
 
 #include "types.hpp"
 
@@ -65,5 +64,3 @@ inline void covar_world_to_cam_vjp(
            glm::transpose(v_covar_c) * R * covar;
     v_covar += glm::transpose(R) * v_covar_c * R;
 }
-
-#endif // GSPLAT_SYCL_TRANSFORM_HPP

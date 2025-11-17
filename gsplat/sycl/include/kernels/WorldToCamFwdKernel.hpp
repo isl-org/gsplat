@@ -1,5 +1,4 @@
-#ifndef WorldToCamFwdKernel_HPP
-#define WorldToCamFwdKernel_HPP
+#pragma once
 
 /****************************************************************************
  * World to Camera Transformation Forward Pass
@@ -89,7 +88,5 @@ template <typename T> struct WorldToCamFwdKernel {
         }
     }
 };
-
-#endif // WorldToCamFwdKernel_HPP
 
 } // namespace  gsplat::xpu

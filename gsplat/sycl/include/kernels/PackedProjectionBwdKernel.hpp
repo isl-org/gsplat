@@ -1,6 +1,6 @@
-#ifndef PackedProjectionBwdKernel_HPP
-#define PackedProjectionBwdKernel_HPP
+#pragma once
 
+#include "Sycl_utils.hpp"
 #include "proj.hpp"
 #include "quat.hpp"
 #include "quat_scale_to_covar_preci.hpp"
@@ -273,46 +273,17 @@ template <typename T> struct PackedProjectionBwdKernel {
             if (m_v_means != nullptr) {
                 T *v_means_out = m_v_means + bid * m_N * 3 + gid * 3;
                 for (int i = 0; i < 3; ++i) {
-                    sycl::atomic_ref<
-                        T,
-                        sycl::memory_order::relaxed,
-                        sycl::memory_scope::device>
-                        ref(v_means_out[i]);
-                    ref.fetch_add(v_mean[i]);
+                    gpuAtomicAdd(&v_means_out[i], v_mean[i]);
                 }
             }
             if (m_v_covars != nullptr) {
                 T *v_covars_out = m_v_covars + bid * m_N * 6 + gid * 6;
-                sycl::atomic_ref<
-                    T,
-                    sycl::memory_order::relaxed,
-                    sycl::memory_scope::device>(v_covars_out[0])
-                    .fetch_add(v_covar[0][0]);
-                sycl::atomic_ref<
-                    T,
-                    sycl::memory_order::relaxed,
-                    sycl::memory_scope::device>(v_covars_out[1])
-                    .fetch_add(v_covar[0][1] + v_covar[1][0]);
-                sycl::atomic_ref<
-                    T,
-                    sycl::memory_order::relaxed,
-                    sycl::memory_scope::device>(v_covars_out[2])
-                    .fetch_add(v_covar[0][2] + v_covar[2][0]);
-                sycl::atomic_ref<
-                    T,
-                    sycl::memory_order::relaxed,
-                    sycl::memory_scope::device>(v_covars_out[3])
-                    .fetch_add(v_covar[1][1]);
-                sycl::atomic_ref<
-                    T,
-                    sycl::memory_order::relaxed,
-                    sycl::memory_scope::device>(v_covars_out[4])
-                    .fetch_add(v_covar[1][2] + v_covar[2][1]);
-                sycl::atomic_ref<
-                    T,
-                    sycl::memory_order::relaxed,
-                    sycl::memory_scope::device>(v_covars_out[5])
-                    .fetch_add(v_covar[2][2]);
+                gpuAtomicAdd(&v_covars_out[0], v_covar[0][0]);
+                gpuAtomicAdd(&v_covars_out[1], v_covar[0][1] + v_covar[1][0]);
+                gpuAtomicAdd(&v_covars_out[2], v_covar[0][2] + v_covar[2][0]);
+                gpuAtomicAdd(&v_covars_out[3], v_covar[1][1]);
+                gpuAtomicAdd(&v_covars_out[4], v_covar[1][2] + v_covar[2][1]);
+                gpuAtomicAdd(&v_covars_out[5], v_covar[2][2]);
             } else {
                 mat3<T> rotmat = quat_to_rotmat<T>(quat);
                 vec4<T> v_quat(0.f);
@@ -323,17 +294,9 @@ template <typename T> struct PackedProjectionBwdKernel {
                 T *v_quats_out = m_v_quats + bid * m_N * 4 + gid * 4;
                 T *v_scales_out = m_v_scales + bid * m_N * 3 + gid * 3;
                 for (int i = 0; i < 4; ++i)
-                    sycl::atomic_ref<
-                        T,
-                        sycl::memory_order::relaxed,
-                        sycl::memory_scope::device>(v_quats_out[i])
-                        .fetch_add(v_quat[i]);
+                    gpuAtomicAdd(&v_quats_out[i], v_quat[i]);
                 for (int i = 0; i < 3; ++i)
-                    sycl::atomic_ref<
-                        T,
-                        sycl::memory_order::relaxed,
-                        sycl::memory_scope::device>(v_scales_out[i])
-                        .fetch_add(v_scale[i]);
+                    gpuAtomicAdd(&v_scales_out[i], v_scale[i]);
             }
         }
 
@@ -342,24 +305,12 @@ template <typename T> struct PackedProjectionBwdKernel {
             T *v_viewmats_out = m_v_viewmats + bid * m_C * 16 + cid * 16;
             for (uint32_t i = 0; i < 3; i++) {     // rows
                 for (uint32_t j = 0; j < 3; j++) { // cols
-                    sycl::atomic_ref<
-                        T,
-                        sycl::memory_order::relaxed,
-                        sycl::memory_scope::device>
-                        ref(v_viewmats_out[i * 4 + j]);
-                    ref.fetch_add(v_R[j][i]);
+                    gpuAtomicAdd(&v_viewmats_out[i * 4 + j], v_R[j][i]);
                 }
-                sycl::atomic_ref<
-                    T,
-                    sycl::memory_order::relaxed,
-                    sycl::memory_scope::device>
-                    ref(v_viewmats_out[i * 4 + 3]);
-                ref.fetch_add(v_t[i]);
+                gpuAtomicAdd(&v_viewmats_out[i * 4 + 3], v_t[i]);
             }
         }
     }
 };
 
 } // namespace gsplat::xpu
-
-#endif // PackedProjectionBwdKernel_HPP

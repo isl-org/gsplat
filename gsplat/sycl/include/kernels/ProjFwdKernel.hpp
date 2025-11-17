@@ -1,5 +1,4 @@
-#ifndef ProjFwdKernel_HPP
-#define ProjFwdKernel_HPP
+#pragma once
 
 #include "Common.h"
 #include "proj.hpp"
@@ -90,6 +89,5 @@ template <typename T> struct ProjFwdKernel {
         }
     }
 };
-#endif // ProjFwdKernel_HPP
 
 } // namespace gsplat::xpu

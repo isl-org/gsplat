@@ -1,9 +1,8 @@
-#ifndef ComputeShBwdKernel_HPP
-#define ComputeShBwdKernel_HPP
+#pragma once
 
+#include "Sycl_utils.hpp"
 #include "spherical_harmonics.hpp"
 #include "types.hpp"
-#include "utils.hpp"
 
 namespace gsplat::xpu {
 
@@ -61,7 +60,5 @@ template <typename T> struct ComputeShBwdKernel {
         }
     }
 };
-
-#endif // ComputeShBwdKernel_HPP
 
 } // namespace  gsplat::xpu

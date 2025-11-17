@@ -1,6 +1,6 @@
-#ifndef WorldToCamBwdKernel_HPP
-#define WorldToCamBwdKernel_HPP
+#pragma once
 
+#include "Sycl_utils.hpp"
 #include "transform.hpp"
 #include "types.hpp"
 #include "utils.hpp"
@@ -116,7 +116,5 @@ template <typename T> struct WorldToCamBwdKernel {
         }
     }
 };
-
-#endif // WorldToCamBwdKernel_HPP
 
 } // namespace  gsplat::xpu

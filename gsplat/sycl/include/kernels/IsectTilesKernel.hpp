@@ -1,5 +1,4 @@
-#ifndef IsectTilesKernel_HPP
-#define IsectTilesKernel_HPP
+#pragma once
 
 #include "transform.hpp"
 #include "types.hpp"
@@ -148,7 +147,5 @@ template <typename T> struct IsectTilesKernel {
         }
     }
 };
-
-#endif // IsectTilesKernel_HPP
 
 } // namespace  gsplat::xpu

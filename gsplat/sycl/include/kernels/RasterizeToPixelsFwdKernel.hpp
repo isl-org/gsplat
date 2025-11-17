@@ -1,7 +1,6 @@
-#ifndef RasterizeToPixelsFwdKernel_HPP
-#define RasterizeToPixelsFwdKernel_HPP
+#pragma once
 
-#include "gsplat_sycl_utils.hpp"
+#include "Sycl_utils.hpp"
 #include "types.hpp"
 
 namespace gsplat::xpu {
@@ -319,7 +318,5 @@ struct RasterizeToPixelsFwdKernel {
         }
     }
 };
-
-#endif // RasterizeToPixelsFwdKernel_HPP
 
 } // namespace  gsplat::xpu

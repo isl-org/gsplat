@@ -1,5 +1,4 @@
-#ifndef GSPLAT_SYCL_PROJ_HPP
-#define GSPLAT_SYCL_PROJ_HPP
+#pragma once
 
 #include "types.hpp"
 
@@ -339,5 +338,3 @@ inline void fisheye_proj_vjp(
     v_mean3d.y += dL_dty_raw;
     v_mean3d.z += dL_dtz_raw;
 }
-
-#endif // GSPLAT_SYCL_PROJ_HPP

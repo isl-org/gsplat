@@ -42,7 +42,7 @@ std::tuple<at::Tensor, at::Tensor> spherical_harmonics_bwd(
     sycl::range<1> globalRange(GSPLAT_N_THREADS * numWorkGrps);
     sycl::nd_range<1> range(globalRange, localRange);
 
-    d_queue.submit([&](sycl::handler &cgh) {
+    auto e = d_queue.submit([&](sycl::handler &cgh) {
         ComputeShBwdKernel<float> kernel(
             N,
             K,
@@ -56,6 +56,7 @@ std::tuple<at::Tensor, at::Tensor> spherical_harmonics_bwd(
         );
         cgh.parallel_for(range, kernel);
     });
+    e.wait();
 
     return std::make_tuple(v_coeffs, v_dirs);
 }

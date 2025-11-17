@@ -1,6 +1,6 @@
-#ifndef FullyFusedProjectionBwdKernel_HPP
-#define FullyFusedProjectionBwdKernel_HPP
+#pragma once
 
+#include "Sycl_utils.hpp"
 #include "proj.hpp"
 #include "quat.hpp"
 #include "quat_scale_to_covar_preci.hpp"
@@ -285,7 +285,5 @@ template <typename T> struct FullyFusedProjectionBwdKernel {
         }
     }
 };
-
-#endif // FullyFusedProjectionBwdKernel_HPP
 
 } // namespace  gsplat::xpu

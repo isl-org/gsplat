@@ -1,5 +1,4 @@
-#ifndef GSPLAT_SYCL_QUAT_HPP
-#define GSPLAT_SYCL_QUAT_HPP
+#pragma once
 
 #include "types.hpp"
 
@@ -52,5 +51,3 @@ quat_to_rotmat_vjp(const vec4<T> quat, const mat3<T> v_R, vec4<T> &v_quat) {
     vec4<T> quat_n = vec4<T>(w, x, y, z);
     v_quat += (v_quat_n - glm::dot(v_quat_n, quat_n) * quat_n) * inv_norm;
 }
-
-#endif // GSPLAT_SYCL_QUAT_HPP
