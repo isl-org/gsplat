@@ -169,12 +169,6 @@ projection_ewa_3dgs_packed_fwd(
         );
     }
 
-    at::Tensor block_accum_exclusive = at::cat(
-        {at::zeros({1}, long_opts),
-         block_accum_inclusive.slice(0, 0, n_blocks - 1)}
-    );
-    at::Tensor block_accum_exclusive_int = block_accum_exclusive.to(at::kInt);
-
     // Allocate final output tensors
     batch_ids = at::empty({nnz}, long_opts);
     camera_ids = at::empty({nnz}, long_opts);
@@ -218,7 +212,7 @@ projection_ewa_3dgs_packed_fwd(
                         (scalar_t)far_plane,
                         (scalar_t)radius_clip,
                         camera_model,
-                        block_accum_exclusive_int.data_ptr<int32_t>(),
+                        block_accum_inclusive.data_ptr<int64_t>(),
                         nullptr, // block_cnts
                         indptr.data_ptr<int32_t>(),
                         batch_ids.data_ptr<int64_t>(),

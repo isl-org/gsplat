@@ -28,7 +28,7 @@ template <typename T> struct PackedProjectionFwdKernel {
     const T m_far_plane;
     const T m_radius_clip;
     const CameraModelType m_camera_model;
-    const int32_t *m_block_accum; // Packing helper for the second pass
+    const int64_t *m_block_accum; // Packing helper for the second pass
 
     // Outputs
     int32_t *m_block_cnts;
@@ -60,7 +60,7 @@ template <typename T> struct PackedProjectionFwdKernel {
         T far_plane,
         T radius_clip,
         CameraModelType camera_model,
-        const int32_t *block_accum,
+        const int64_t *block_accum,
         // outputs
         int32_t *block_cnts,
         int32_t *indptr,
@@ -257,10 +257,10 @@ template <typename T> struct PackedProjectionFwdKernel {
         }
 
         // --- Pass-specific logic ---
-        int32_t thread_data = static_cast<int32_t>(valid);
 
         if (m_block_cnts != nullptr) {
             // First pass: Count visible Gaussians in this block.
+            int32_t thread_data = static_cast<int32_t>(valid);
             bool any_valid = sycl::any_of_group(group, valid);
             if (any_valid) {
                 // Reduce the count of valid Gaussians across the work-group.
@@ -277,16 +277,17 @@ template <typename T> struct PackedProjectionFwdKernel {
 
         } else {
             // Second pass: Write data for visible Gaussians.
+            int64_t thread_data = static_cast<int64_t>(valid);
             bool any_valid = sycl::any_of_group(group, valid);
             if (any_valid) {
                 // Perform an exclusive scan to find the local offset for this
                 // thread.
-                int32_t local_offset = sycl::exclusive_scan_over_group(
+                int64_t local_offset = sycl::exclusive_scan_over_group(
                     group, thread_data, sycl::plus<>()
                 );
 
                 if (valid) {
-                    int32_t global_offset = local_offset;
+                    int64_t global_offset = local_offset;
                     if (block_idx > 0) {
                         global_offset += m_block_accum[block_idx - 1];
                     }
