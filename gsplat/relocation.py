@@ -5,13 +5,7 @@ import torch
 from torch import Tensor
 
 from . import BACKEND
-
-# Now, conditionally import the functions based on the detected backend.
-if BACKEND == "cuda":
-    from .cuda._wrapper import _make_lazy_cuda_func as _make_lazy_func
-elif BACKEND == "sycl":
-    from .sycl._wrapper import _make_lazy_sycl_func as _make_lazy_func
-
+from ._wrapper import _make_lazy_device_func
 
 def compute_relocation(
     opacities: Tensor,  # [N]
@@ -49,7 +43,7 @@ def compute_relocation(
     ratios.clamp_(min=1, max=n_max)
     ratios = ratios.int().contiguous()
 
-    new_opacities, new_scales = _make_lazy_func("relocation")(
+    new_opacities, new_scales = _make_lazy_device_func("relocation")(
         opacities, scales, ratios, binoms, n_max
     )
     return new_opacities, new_scales

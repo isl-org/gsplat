@@ -8,35 +8,18 @@ from torch import Tensor
 from typing_extensions import Literal
 
 from . import BACKEND
-
-# Now, conditionally import the functions based on the detected backend.
-if BACKEND == "sycl":
-    from .sycl._wrapper import (
-        RollingShutterType,
-        fully_fused_projection,
-        fully_fused_projection_2dgs,
-        fully_fused_projection_with_ut,
-        isect_offset_encode,
-        isect_tiles,
-        rasterize_to_pixels,
-        rasterize_to_pixels_2dgs,
-        rasterize_to_pixels_eval3d,
-        spherical_harmonics,
-    )
-else:  # CUDA or no backend (e.g., CPU only for docs and testing)
-    from .cuda._wrapper import (
-        RollingShutterType,
-        fully_fused_projection,
-        fully_fused_projection_2dgs,
-        fully_fused_projection_with_ut,
-        isect_offset_encode,
-        isect_tiles,
-        rasterize_to_pixels,
-        rasterize_to_pixels_2dgs,
-        rasterize_to_pixels_eval3d,
-        spherical_harmonics,
-    )
-
+from ._wrapper import (
+    RollingShutterType,
+    fully_fused_projection,
+    fully_fused_projection_2dgs,
+    fully_fused_projection_with_ut,
+    isect_offset_encode,
+    isect_tiles,
+    rasterize_to_pixels,
+    rasterize_to_pixels_2dgs,
+    rasterize_to_pixels_eval3d,
+    spherical_harmonics,
+)
 from .distributed import (
     all_gather_int32,
     all_gather_tensor_list,

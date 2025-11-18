@@ -8,20 +8,26 @@ import torch
 from torch import Tensor
 from typing_extensions import Literal
 
+from . import torch_acc, BACKEND
 
-def _make_lazy_cuda_func(name: str) -> Callable:
-    def call_cuda(*args, **kwargs):
-        # pylint: disable=import-outside-toplevel
-        from ._backend import _C
+
+def _make_lazy_device_func(name: str) -> Callable:
+    def call_device(*args, **kwargs):
+        if BACKEND == "cuda":
+            from .cuda._backend import _C
+        elif BACKEND == "sycl":
+            from .sycl._backend import _C
 
         return getattr(_C, name)(*args, **kwargs)
 
-    return call_cuda
+    return call_device
 
 
-def _make_lazy_cuda_obj(name: str) -> Any:
-    # pylint: disable=import-outside-toplevel
-    from ._backend import _C
+def _make_lazy_device_obj(name: str) -> Any:
+    if BACKEND == "cuda":
+        from .cuda._backend import _C
+    elif BACKEND == "sycl":
+        from .sycl._backend import _C
 
     obj = _C
     for name_split in name.split("."):
@@ -37,7 +43,7 @@ class RollingShutterType(Enum):
     GLOBAL = 4
 
     def to_cpp(self) -> Any:
-        return _make_lazy_cuda_obj(f"ShutterType.{self.name}")
+        return _make_lazy_device_obj(f"ShutterType.{self.name}")
 
 
 @dataclass
@@ -53,7 +59,7 @@ class UnscentedTransformParameters:
     require_all_sigma_points_valid: bool = True
 
     def to_cpp(self) -> Any:
-        p = _make_lazy_cuda_obj("UnscentedTransformParameters")()
+        p = _make_lazy_device_obj("UnscentedTransformParameters")()
         p.alpha = self.alpha
         p.beta = self.beta
         p.kappa = self.kappa
@@ -68,7 +74,7 @@ class FThetaPolynomialType(Enum):
     ANGLE_TO_PIXELDIST = 1
 
     def to_cpp(self) -> Any:
-        return _make_lazy_cuda_obj(f"FThetaPolynomialType.{self.name}")
+        return _make_lazy_device_obj(f"FThetaPolynomialType.{self.name}")
 
 
 @dataclass
@@ -80,7 +86,7 @@ class FThetaCameraDistortionParameters:
     linear_cde: Tuple[float, float, float]  # [3]
 
     def to_cpp(self) -> Any:
-        p = _make_lazy_cuda_obj("FThetaCameraDistortionParameters")()
+        p = _make_lazy_device_obj("FThetaCameraDistortionParameters")()
         p.reference_poly = self.reference_poly.to_cpp()
         p.pixeldist_to_angle_poly = self.pixeldist_to_angle_poly
         p.angle_to_pixeldist_poly = self.angle_to_pixeldist_poly
@@ -90,7 +96,7 @@ class FThetaCameraDistortionParameters:
 
     @classmethod
     def to_cpp_default(cls) -> Any:
-        p = _make_lazy_cuda_obj("FThetaCameraDistortionParameters")()
+        p = _make_lazy_device_obj("FThetaCameraDistortionParameters")()
         return p
 
 
@@ -112,10 +118,10 @@ def world_to_cam(
         - **Gaussian means in camera coordinate system**. [..., C, N, 3]
         - **Gaussian covariances in camera coordinate system**. [..., C, N, 3, 3]
     """
-    from .._torch_impl import _world_to_cam
+    from ._torch_impl import _world_to_cam
 
     warnings.warn(
-        "world_to_cam() is removed from the CUDA backend as it's relatively easy to "
+        "world_to_cam() is removed from the device backend as it's relatively easy to "
         "implement in PyTorch. Currently use the PyTorch implementation instead. "
         "This function will be completely removed in a future release.",
         DeprecationWarning,
@@ -143,7 +149,7 @@ def adam(
     b2: float,
     eps: float,
 ) -> None:
-    _make_lazy_cuda_func("adam")(
+    _make_lazy_device_func("adam")(
         param, param_grad, exp_avg, exp_avg_sq, valid, lr, b1, b2, eps
     )
 
@@ -324,7 +330,7 @@ def fully_fused_projection(
     .. note::
 
         This functions supports projecting Gaussians with either covariances or {quaternions, scales},
-        which will be converted to covariances internally in a fused CUDA kernel. Either `covars` or
+        which will be converted to covariances internally in a fused device kernel. Either `covars` or
         {`quats`, `scales`} should be provided.
 
     Args:
@@ -501,7 +507,7 @@ def isect_tiles(
         assert radii.shape == image_dims + (N, 2), radii.shape
         assert depths.shape == image_dims + (N,), depths.shape
 
-    tiles_per_gauss, isect_ids, flatten_ids = _make_lazy_cuda_func("intersect_tile")(
+    tiles_per_gauss, isect_ids, flatten_ids = _make_lazy_device_func("intersect_tile")(
         means2d.contiguous(),
         radii.contiguous(),
         depths.contiguous(),
@@ -535,7 +541,7 @@ def isect_offset_encode(
     Returns:
         Offsets. [I, tile_height, tile_width]
     """
-    return _make_lazy_cuda_func("intersect_offset")(
+    return _make_lazy_device_func("intersect_offset")(
         isect_ids.contiguous(), n_images, tile_width, tile_height
     )
 
@@ -914,7 +920,7 @@ def rasterize_to_indices_in_range(
         tile_width * tile_size >= image_width
     ), f"Assert Failed: {tile_width} * {tile_size} >= {image_width}"
 
-    out_gauss_ids, out_indices = _make_lazy_cuda_func("rasterize_to_indices_3dgs")(
+    out_gauss_ids, out_indices = _make_lazy_device_func("rasterize_to_indices_3dgs")(
         range_start,
         range_end,
         transmittances.contiguous(),
@@ -944,7 +950,7 @@ class _QuatScaleToCovarPreci(torch.autograd.Function):
         compute_preci: bool = True,
         triu: bool = False,
     ) -> Tuple[Tensor, Tensor]:
-        covars, precis = _make_lazy_cuda_func("quat_scale_to_covar_preci_fwd")(
+        covars, precis = _make_lazy_device_func("quat_scale_to_covar_preci_fwd")(
             quats, scales, compute_covar, compute_preci, triu
         )
         ctx.save_for_backward(quats, scales)
@@ -963,7 +969,7 @@ class _QuatScaleToCovarPreci(torch.autograd.Function):
             v_covars = v_covars.to_dense()
         if compute_preci and v_precis.is_sparse:
             v_precis = v_precis.to_dense()
-        v_quats, v_scales = _make_lazy_cuda_func("quat_scale_to_covar_preci_bwd")(
+        v_quats, v_scales = _make_lazy_device_func("quat_scale_to_covar_preci_bwd")(
             quats,
             scales,
             triu,
@@ -990,11 +996,11 @@ class _Proj(torch.autograd.Function):
             camera_model != "ftheta"
         ), "ftheta camera is only supported via UT, please set with_ut=True in the rasterization()"
 
-        camera_model_type = _make_lazy_cuda_obj(
+        camera_model_type = _make_lazy_device_obj(
             f"CameraModelType.{camera_model.upper()}"
         )
 
-        means2d, covars2d = _make_lazy_cuda_func("projection_ewa_simple_fwd")(
+        means2d, covars2d = _make_lazy_device_func("projection_ewa_simple_fwd")(
             means,
             covars,
             Ks,
@@ -1014,7 +1020,7 @@ class _Proj(torch.autograd.Function):
         width = ctx.width
         height = ctx.height
         camera_model_type = ctx.camera_model_type
-        v_means, v_covars = _make_lazy_cuda_func("projection_ewa_simple_bwd")(
+        v_means, v_covars = _make_lazy_device_func("projection_ewa_simple_bwd")(
             means,
             covars,
             Ks,
@@ -1053,12 +1059,12 @@ class _FullyFusedProjection(torch.autograd.Function):
             camera_model != "ftheta"
         ), "ftheta camera is only supported via UT, please set with_ut=True in the rasterization()"
 
-        camera_model_type = _make_lazy_cuda_obj(
+        camera_model_type = _make_lazy_device_obj(
             f"CameraModelType.{camera_model.upper()}"
         )
 
         # "covars" and {"quats", "scales"} are mutually exclusive
-        radii, means2d, depths, conics, compensations = _make_lazy_cuda_func(
+        radii, means2d, depths, conics, compensations = _make_lazy_device_func(
             "projection_ewa_3dgs_fused_fwd"
         )(
             means,
@@ -1108,7 +1114,7 @@ class _FullyFusedProjection(torch.autograd.Function):
         camera_model_type = ctx.camera_model_type
         if v_compensations is not None:
             v_compensations = v_compensations.contiguous()
-        v_means, v_covars, v_quats, v_scales, v_viewmats = _make_lazy_cuda_func(
+        v_means, v_covars, v_quats, v_scales, v_viewmats = _make_lazy_device_func(
             "projection_ewa_3dgs_fused_bwd"
         )(
             means,
@@ -1214,9 +1220,9 @@ def fully_fused_projection_with_ut(
     if viewmats_rs is not None:
         assert viewmats_rs.shape == batch_dims + (C, 4, 4), viewmats_rs.shape
 
-    camera_model_type = _make_lazy_cuda_obj(f"CameraModelType.{camera_model.upper()}")
+    camera_model_type = _make_lazy_device_obj(f"CameraModelType.{camera_model.upper()}")
 
-    radii, means2d, depths, conics, compensations = _make_lazy_cuda_func(
+    radii, means2d, depths, conics, compensations = _make_lazy_device_func(
         "projection_ut_3dgs_fused"
     )(
         means.contiguous(),
@@ -1269,7 +1275,7 @@ class _RasterizeToPixels(torch.autograd.Function):
         flatten_ids: Tensor,  # [n_isects]
         absgrad: bool,
     ) -> Tuple[Tensor, Tensor]:
-        render_colors, render_alphas, last_ids = _make_lazy_cuda_func(
+        render_colors, render_alphas, last_ids = _make_lazy_device_func(
             "rasterize_to_pixels_3dgs_fwd"
         )(
             means2d,
@@ -1335,7 +1341,7 @@ class _RasterizeToPixels(torch.autograd.Function):
             v_conics,
             v_colors,
             v_opacities,
-        ) = _make_lazy_cuda_func("rasterize_to_pixels_3dgs_bwd")(
+        ) = _make_lazy_device_func("rasterize_to_pixels_3dgs_bwd")(
             means2d,
             conics,
             colors,
@@ -1413,7 +1419,7 @@ class _RasterizeToPixelsEval3D(torch.autograd.Function):
     ) -> Tuple[Tensor, Tensor]:
         ut_params = ut_params.to_cpp()
         rs_type = rolling_shutter.to_cpp()
-        camera_model_type = _make_lazy_cuda_obj(
+        camera_model_type = _make_lazy_device_obj(
             f"CameraModelType.{camera_model.upper()}"
         )
         ftheta_coeffs = (
@@ -1422,7 +1428,7 @@ class _RasterizeToPixelsEval3D(torch.autograd.Function):
             else FThetaCameraDistortionParameters.to_cpp_default()
         )
 
-        render_colors, render_alphas, last_ids = _make_lazy_cuda_func(
+        render_colors, render_alphas, last_ids = _make_lazy_device_func(
             "rasterize_to_pixels_from_world_3dgs_fwd"
         )(
             means,
@@ -1511,7 +1517,7 @@ class _RasterizeToPixelsEval3D(torch.autograd.Function):
         tile_size = ctx.tile_size
         ftheta_coeffs = ctx.ftheta_coeffs
 
-        (v_means, v_quats, v_scales, v_colors, v_opacities,) = _make_lazy_cuda_func(
+        (v_means, v_quats, v_scales, v_colors, v_opacities,) = _make_lazy_device_func(
             "rasterize_to_pixels_from_world_3dgs_bwd"
         )(
             means,
@@ -1605,7 +1611,7 @@ class _FullyFusedProjectionPacked(torch.autograd.Function):
             camera_model != "ftheta"
         ), "ftheta camera is only supported via UT, please set with_ut=True in the rasterization()"
 
-        camera_model_type = _make_lazy_cuda_obj(
+        camera_model_type = _make_lazy_device_obj(
             f"CameraModelType.{camera_model.upper()}"
         )
 
@@ -1619,7 +1625,7 @@ class _FullyFusedProjectionPacked(torch.autograd.Function):
             depths,
             conics,
             compensations,
-        ) = _make_lazy_cuda_func("projection_ewa_3dgs_packed_fwd")(
+        ) = _make_lazy_device_func("projection_ewa_3dgs_packed_fwd")(
             means,
             covars,  # optional
             quats,  # optional
@@ -1701,7 +1707,7 @@ class _FullyFusedProjectionPacked(torch.autograd.Function):
 
         if v_compensations is not None:
             v_compensations = v_compensations.contiguous()
-        v_means, v_covars, v_quats, v_scales, v_viewmats = _make_lazy_cuda_func(
+        v_means, v_covars, v_quats, v_scales, v_viewmats = _make_lazy_device_func(
             "projection_ewa_3dgs_packed_bwd"
         )(
             means,
@@ -1805,7 +1811,7 @@ class _SphericalHarmonics(torch.autograd.Function):
     def forward(
         ctx, sh_degree: int, dirs: Tensor, coeffs: Tensor, masks: Tensor
     ) -> Tensor:
-        colors = _make_lazy_cuda_func("spherical_harmonics_fwd")(
+        colors = _make_lazy_device_func("spherical_harmonics_fwd")(
             sh_degree, dirs, coeffs, masks
         )
         ctx.save_for_backward(dirs, coeffs, masks)
@@ -1819,7 +1825,7 @@ class _SphericalHarmonics(torch.autograd.Function):
         sh_degree = ctx.sh_degree
         num_bases = ctx.num_bases
         compute_v_dirs = ctx.needs_input_grad[1]
-        v_coeffs, v_dirs = _make_lazy_cuda_func("spherical_harmonics_bwd")(
+        v_coeffs, v_dirs = _make_lazy_device_func("spherical_harmonics_bwd")(
             num_bases,
             sh_degree,
             dirs,
@@ -1958,7 +1964,7 @@ class _FullyFusedProjection2DGS(torch.autograd.Function):
         far_plane: float,
         radius_clip: float,
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-        radii, means2d, depths, ray_transforms, normals = _make_lazy_cuda_func(
+        radii, means2d, depths, ray_transforms, normals = _make_lazy_device_func(
             "projection_2dgs_fused_fwd"
         )(
             means,
@@ -2004,7 +2010,7 @@ class _FullyFusedProjection2DGS(torch.autograd.Function):
         width = ctx.width
         height = ctx.height
         eps2d = ctx.eps2d
-        v_means, v_quats, v_scales, v_viewmats = _make_lazy_cuda_func(
+        v_means, v_quats, v_scales, v_viewmats = _make_lazy_device_func(
             "projection_2dgs_fused_bwd"
         )(
             means,
@@ -2075,7 +2081,7 @@ class _FullyFusedProjectionPacked2DGS(torch.autograd.Function):
             depths,
             ray_transforms,
             normals,
-        ) = _make_lazy_cuda_func("projection_2dgs_packed_fwd")(
+        ) = _make_lazy_device_func("projection_2dgs_packed_fwd")(
             means,
             quats,
             scales,
@@ -2140,7 +2146,7 @@ class _FullyFusedProjectionPacked2DGS(torch.autograd.Function):
         height = ctx.height
         sparse_grad = ctx.sparse_grad
 
-        v_means, v_quats, v_scales, v_viewmats = _make_lazy_cuda_func(
+        v_means, v_quats, v_scales, v_viewmats = _make_lazy_device_func(
             "projection_2dgs_packed_bwd"
         )(
             means,
@@ -2292,7 +2298,7 @@ def rasterize_to_pixels_2dgs(
         raise ValueError(f"Unsupported number of color channels: {channels}")
     if channels not in (1, 2, 3, 4, 8, 16, 32, 64, 128, 256, 512):
         padded_channels = (1 << (channels - 1).bit_length()) - channels
-        # Make sure the depth (last channel if present) remains in the last channel after padding (for depth distortion and median depth in CUDA kernel)
+        # Make sure the depth (last channel if present) remains in the last channel after padding (for depth distortion and median depth in device kernel)
         colors = torch.cat(
             [
                 colors[..., :-1],
@@ -2420,7 +2426,7 @@ def rasterize_to_indices_in_range_2dgs(
         tile_width * tile_size >= image_width
     ), f"Assert Failed: {tile_width} * {tile_size} >= {image_width}"
 
-    out_gauss_ids, out_indices = _make_lazy_cuda_func("rasterize_to_indices_2dgs")(
+    out_gauss_ids, out_indices = _make_lazy_device_func("rasterize_to_indices_2dgs")(
         range_start,
         range_end,
         transmittances.contiguous(),
@@ -2468,7 +2474,7 @@ class _RasterizeToPixels2DGS(torch.autograd.Function):
             render_median,
             last_ids,
             median_ids,
-        ) = _make_lazy_cuda_func("rasterize_to_pixels_2dgs_fwd")(
+        ) = _make_lazy_device_func("rasterize_to_pixels_2dgs_fwd")(
             means2d,
             ray_transforms,
             colors,
@@ -2554,7 +2560,7 @@ class _RasterizeToPixels2DGS(torch.autograd.Function):
             v_opacities,
             v_normals,
             v_densify,
-        ) = _make_lazy_cuda_func("rasterize_to_pixels_2dgs_bwd")(
+        ) = _make_lazy_device_func("rasterize_to_pixels_2dgs_bwd")(
             means2d,
             ray_transforms,
             colors,
@@ -2579,7 +2585,7 @@ class _RasterizeToPixels2DGS(torch.autograd.Function):
             v_render_median.contiguous(),
             absgrad,
         )
-        torch.cuda.synchronize()
+        torch_acc.synchronize()
         if absgrad:
             means2d.absgrad = v_means2d_abs
 

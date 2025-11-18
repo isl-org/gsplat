@@ -19,7 +19,7 @@ def _fully_fused_projection_2dgs(
     far_plane: float = 1e10,
     eps: float = 0,
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-    """PyTorch implementation of `gsplat.cuda._wrapper.fully_fused_projection_2dgs()`
+    """PyTorch implementation of `gsplat._wrapper.fully_fused_projection_2dgs()`
 
     .. note::
 
@@ -209,7 +209,7 @@ def _rasterize_to_pixels_2dgs(
     backgrounds: Optional[Tensor] = None,  # [..., channels]
     batch_per_iter: int = 100,
 ):
-    """Pytorch implementation of `gsplat.cuda._wrapper.rasterize_to_pixels_2dgs()`.
+    """Pytorch implementation of `gsplat._wrapper.rasterize_to_pixels_2dgs()`.
 
     This function rasterizes 2D Gaussians to pixels in a Pytorch-friendly way. It
     iteratively accumulates the renderings within each batch of Gaussians. The
@@ -231,7 +231,7 @@ def _rasterize_to_pixels_2dgs(
         This function requires the `nerfacc` package to be installed. Please install it
         using the following command `pip install nerfacc`.
     """
-    from .cuda._wrapper import rasterize_to_indices_in_range_2dgs
+    from ._wrapper import rasterize_to_indices_in_range_2dgs
 
     image_dims = means2d.shape[:-2]
     channels = colors.shape[-1]

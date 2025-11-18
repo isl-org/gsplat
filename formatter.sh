@@ -4,5 +4,9 @@ find gsplat/cuda/include \
   -type f \( -iname "*.cpp" -o -iname "*.cuh" -o -iname "*.cu" -o -iname "*.h" \) \
   -exec clang-format -i {} \;
 
+find gsplat/sycl \
+  -type f \( -iname "*.cpp" -o -iname "*.hpp" \) \
+  -exec clang-format -i {} \;
+
 # install via: pip install black==22.3.0
 black . gsplat/ tests/ examples/ profiling/

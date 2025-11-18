@@ -49,7 +49,7 @@ def _quat_scale_to_covar_preci(
     compute_preci: bool = True,
     triu: bool = False,
 ) -> Tuple[Optional[Tensor], Optional[Tensor]]:
-    """PyTorch implementation of `gsplat.cuda._wrapper.quat_scale_to_covar_preci()`."""
+    """PyTorch implementation of `gsplat._wrapper.quat_scale_to_covar_preci()`."""
     batch_dims = quats.shape[:-1]
     assert quats.shape == batch_dims + (4,), quats.shape
     assert scales.shape == batch_dims + (3,), scales.shape
@@ -296,7 +296,7 @@ def _fully_fused_projection(
     calc_compensations: bool = False,
     camera_model: Literal["pinhole", "ortho", "fisheye", "ftheta"] = "pinhole",
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Optional[Tensor]]:
-    """PyTorch implementation of `gsplat.cuda._wrapper.fully_fused_projection()`
+    """PyTorch implementation of `gsplat._wrapper.fully_fused_projection()`
 
     .. note::
 
@@ -384,7 +384,7 @@ def _isect_tiles(
     tile_height: int,
     sort: bool = True,
 ) -> Tuple[Tensor, Tensor, Tensor]:
-    """Pytorch implementation of `gsplat.cuda._wrapper.isect_tiles()`.
+    """Pytorch implementation of `gsplat._wrapper.isect_tiles()`.
 
     .. note::
 
@@ -477,7 +477,7 @@ def _isect_tiles(
 def _isect_offset_encode(
     isect_ids: Tensor, I: int, tile_width: int, tile_height: int
 ) -> Tensor:
-    """Pytorch implementation of `gsplat.cuda._wrapper.isect_offset_encode()`.
+    """Pytorch implementation of `gsplat._wrapper.isect_offset_encode()`.
 
     .. note::
 
@@ -617,7 +617,7 @@ def _rasterize_to_pixels(
     backgrounds: Optional[Tensor] = None,  # [..., channels]
     batch_per_iter: int = 100,
 ):
-    """Pytorch implementation of `gsplat.cuda._wrapper.rasterize_to_pixels()`.
+    """Pytorch implementation of `gsplat._wrapper.rasterize_to_pixels()`.
 
     This function rasterizes 2D Gaussians to pixels in a Pytorch-friendly way. It
     iteratively accumulates the renderings within each batch of Gaussians. The
@@ -639,7 +639,7 @@ def _rasterize_to_pixels(
         This function requires the `nerfacc` package to be installed. Please install it
         using the following command `pip install nerfacc`.
     """
-    from .cuda._wrapper import rasterize_to_indices_in_range
+    from ._wrapper import rasterize_to_indices_in_range
 
     image_dims = means2d.shape[:-2]
     channels = colors.shape[-1]
@@ -806,7 +806,7 @@ def _spherical_harmonics(
     dirs: torch.Tensor,  # [..., 3]
     coeffs: torch.Tensor,  # [..., K, 3]
 ):
-    """Pytorch implementation of `gsplat.cuda._wrapper.spherical_harmonics()`."""
+    """Pytorch implementation of `gsplat._wrapper.spherical_harmonics()`."""
     assert (degrees_to_use + 1) ** 2 <= coeffs.shape[-2], coeffs.shape
     batch_dims = dirs.shape[:-1]
     assert dirs.shape == batch_dims + (3,), dirs.shape

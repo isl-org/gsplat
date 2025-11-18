@@ -192,7 +192,6 @@ class DefaultStrategy(Strategy):
             if self.refine_scale2d_stop_iter > 0:
                 state["radii"].zero_()
             torch_acc.empty_cache()
-            print(f"Empty cache after step {step}", flush=True)
 
         if step % self.reset_every == 0 & step > 0:
             reset_opa(

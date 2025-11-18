@@ -180,7 +180,7 @@ setup(
     keywords="gaussian, splatting, cuda, sycl",
     url=URL,
     download_url=f"{URL}/archive/gsplat-{__version__}.tar.gz",
-    python_requires=">=3.8",  # Updated to match your CMake
+    python_requires=">=3.8",
     install_requires=[
         "ninja",
         "numpy",

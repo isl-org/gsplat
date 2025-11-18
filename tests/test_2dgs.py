@@ -97,7 +97,6 @@ def test_projection_2dgs(test_data, batch_dims: Tuple[int, ...]):
     # TODO (WZ): is the following true for 2dgs as while?
     # radii is integer so we allow for 1 unit difference
     valid = ((radii > 0) & (_radii > 0)).all(dim=-1)
-    valid_expanded = valid.unsqueeze(-1).unsqueeze(-1)
     torch.testing.assert_close(radii, _radii, rtol=1e-3, atol=1)
     torch.testing.assert_close(means2d[valid], _means2d[valid], rtol=1e-4, atol=1e-4)
     torch.testing.assert_close(depths[valid], _depths[valid], rtol=1e-4, atol=1e-4)
@@ -141,7 +140,7 @@ def test_projection_2dgs(test_data, batch_dims: Tuple[int, ...]):
 def test_fully_fused_projection_packed_2dgs(
     test_data, sparse_grad: bool, batch_dims: Tuple[int, ...]
 ):
-    from gsplat.cuda._wrapper import fully_fused_projection_2dgs
+    from gsplat._wrapper import fully_fused_projection_2dgs
 
     torch.manual_seed(42)
 
