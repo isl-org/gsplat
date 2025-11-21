@@ -300,7 +300,17 @@ def test_fully_fused_projection_packed(
     means.requires_grad = True
 
     if fused:
-        res = gsplat.fully_fused_projection(
+        (
+            batch_ids,
+            camera_ids,
+            gaussian_ids,
+            indptr,
+            radii,
+            means2d,
+            depths,
+            conics,
+            compensations,
+        ) = gsplat.fully_fused_projection(
             means,
             None,
             quats,
@@ -334,8 +344,20 @@ def test_fully_fused_projection_packed(
             camera_model=camera_model,
         )
     else:
-        covars, _ = gsplat.quat_scale_to_covar_preci(quats, scales, triu=True)
-        res = gsplat.fully_fused_projection(
+        covars, _ = gsplat.quat_scale_to_covar_preci(
+            quats, scales, triu=True
+        )  # [..., N, 6]
+        (
+            batch_ids,
+            camera_ids,
+            gaussian_ids,
+            indptr,
+            radii,
+            means2d,
+            depths,
+            conics,
+            compensations,
+        ) = fully_fused_projection(
             means,
             covars,
             None,
@@ -369,16 +391,6 @@ def test_fully_fused_projection_packed(
             camera_model=camera_model,
         )
 
-    (
-        batch_ids,
-        camera_ids,
-        gaussian_ids,
-        radii,
-        means2d,
-        depths,
-        conics,
-        compensations,
-    ) = res
     B, C, N = math.prod(batch_dims), viewmats.shape[-3], means.shape[-2]
 
     # Unpack for comparison
