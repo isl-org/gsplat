@@ -1,4 +1,5 @@
 #include <c10/xpu/XPUStream.h>
+#include <c10/core/DeviceGuard.h>
 
 #include <cmath>
 
@@ -21,13 +22,14 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor> intersect_tile(
     const bool sort,
     const bool segmented
 ) {
-    CHECK_CONTIGUOUS(means2d);
-    CHECK_CONTIGUOUS(radii);
-    CHECK_CONTIGUOUS(depths);
+    DEVICE_GUARD(means2d);
+    CHECK_INPUT(means2d);
+    CHECK_INPUT2(radii, means2d);
+    CHECK_INPUT2(depths, means2d);
     if (image_ids.has_value())
-        CHECK_CONTIGUOUS(image_ids.value());
+        CHECK_INPUT2(image_ids.value(), means2d);
     if (gaussian_ids.has_value())
-        CHECK_CONTIGUOUS(gaussian_ids.value());
+        CHECK_INPUT2(gaussian_ids.value(), means2d);
 
     const bool packed = segmented;
     const uint32_t C = I;

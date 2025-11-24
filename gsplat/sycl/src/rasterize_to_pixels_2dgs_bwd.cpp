@@ -186,28 +186,30 @@ rasterize_to_pixels_2dgs_bwd(
     const at::Tensor v_render_median,  // [..., image_height, image_width]
     bool absgrad
 ) {
-    // Check input tensors are contiguous
-    CHECK_CONTIGUOUS(means2d);
-    CHECK_CONTIGUOUS(ray_transforms);
-    CHECK_CONTIGUOUS(colors);
-    CHECK_CONTIGUOUS(opacities);
-    CHECK_CONTIGUOUS(normals);
-    CHECK_CONTIGUOUS(densify);
-    CHECK_CONTIGUOUS(tile_offsets);
-    CHECK_CONTIGUOUS(flatten_ids);
-    CHECK_CONTIGUOUS(render_colors);
-    CHECK_CONTIGUOUS(render_alphas);
-    CHECK_CONTIGUOUS(last_ids);
-    CHECK_CONTIGUOUS(median_ids);
-    CHECK_CONTIGUOUS(v_render_colors);
-    CHECK_CONTIGUOUS(v_render_alphas);
-    CHECK_CONTIGUOUS(v_render_normals);
-    CHECK_CONTIGUOUS(v_render_distort);
-    CHECK_CONTIGUOUS(v_render_median);
-    if (backgrounds.has_value())
-        CHECK_CONTIGUOUS(backgrounds.value());
-    if (masks.has_value())
-        CHECK_CONTIGUOUS(masks.value());
+    DEVICE_GUARD(means2d);
+    // Check input tensors are contiguous and on the same device
+    CHECK_INPUT(means2d);
+    CHECK_INPUT2(ray_transforms, means2d);
+    CHECK_INPUT2(colors, means2d);
+    CHECK_INPUT2(opacities, means2d);
+    CHECK_INPUT2(normals, means2d);
+    if (backgrounds.has_value()) {
+        CHECK_INPUT2(backgrounds.value(), means2d);
+    }
+    if (masks.has_value()) {
+        CHECK_INPUT2(masks.value(), means2d);
+    }
+    CHECK_INPUT2(tile_offsets, means2d);
+    CHECK_INPUT2(flatten_ids, means2d);
+    CHECK_INPUT2(render_colors, means2d);
+    CHECK_INPUT2(render_alphas, means2d);
+    CHECK_INPUT2(last_ids, means2d);
+    CHECK_INPUT2(median_ids, means2d);
+    CHECK_INPUT2(v_render_colors, means2d);
+    CHECK_INPUT2(v_render_alphas, means2d);
+    CHECK_INPUT2(v_render_normals, means2d);
+    CHECK_INPUT2(v_render_distort, means2d);
+    CHECK_INPUT2(v_render_median, means2d);
 
     uint32_t channels = colors.size(-1);
 

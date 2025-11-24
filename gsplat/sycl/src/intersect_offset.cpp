@@ -14,7 +14,8 @@ at::Tensor intersect_offset(
     const uint32_t tile_width,
     const uint32_t tile_height
 ) {
-    CHECK_CONTIGUOUS(isect_ids);
+    DEVICE_GUARD(isect_ids);
+    CHECK_INPUT(isect_ids);
     const uint32_t C = I;
 
     auto options = isect_ids.options().dtype(at::kInt);

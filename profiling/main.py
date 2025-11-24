@@ -6,12 +6,13 @@ pytest <THIS_PY_FILE>
 ```
 """
 
+import os
 import time
 
 import torch
 from typing_extensions import Callable, Literal
 
-from gsplat import torch_acc, BACKEND
+from gsplat import __version__, torch_acc, BACKEND
 from gsplat._helper import load_test_data
 from gsplat.distributed import cli
 from gsplat.rendering import rasterization
@@ -51,6 +52,7 @@ def main(
     world_rank: int = 0,
     world_size: int = 1,
 ):
+    data_path = os.path.join(os.path.dirname(__file__), "../assets/test_garden.npz")
     (
         means,
         quats,
@@ -61,8 +63,7 @@ def main(
         Ks,
         width,
         height,
-    ) = load_test_data(device=device, scene_grid=scene_grid)
-
+    ) = load_test_data(data_path=data_path, device=device, scene_grid=scene_grid)
     # to batch
     viewmats = viewmats[:1].repeat(batch_size, 1, 1)
     Ks = Ks[:1].repeat(batch_size, 1, 1)
@@ -181,7 +182,7 @@ def worker(local_rank: int, world_rank: int, world_size: int, args):
                     )
                     collection.append(
                         [
-                            "gsplat v1.0.0",
+                            f"gsplat v{__version__}",
                             True,
                             True,
                             # configs
@@ -212,7 +213,7 @@ def worker(local_rank: int, world_rank: int, world_size: int, args):
                     )
                     collection.append(
                         [
-                            "gsplat v1.0.0",
+                            f"gsplat v{__version__}",
                             True,
                             False,
                             # configs
@@ -243,7 +244,7 @@ def worker(local_rank: int, world_rank: int, world_size: int, args):
                     )
                     collection.append(
                         [
-                            "gsplat v1.0.0",
+                            f"gsplat v{__version__}",
                             False,
                             False,
                             # configs

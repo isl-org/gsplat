@@ -33,21 +33,28 @@ projection_ewa_3dgs_packed_bwd(
     const bool viewmats_requires_grad,
     const bool sparse_grad
 ) {
-    TORCH_CHECK(
-        means.is_contiguous(), "Input 'means' tensor must be contiguous."
-    );
-    TORCH_CHECK(
-        viewmats.is_contiguous(), "Input 'viewmats' tensor must be contiguous."
-    );
-    TORCH_CHECK(Ks.is_contiguous(), "Input 'Ks' tensor must be contiguous.");
-    TORCH_CHECK(
-        batch_ids.is_contiguous(),
-        "Input 'batch_ids' tensor must be contiguous."
-    );
-    TORCH_CHECK(
-        means.device().type() == at::kXPU,
-        "Input tensors must be on XPU device."
-    );
+    DEVICE_GUARD(means);
+    // Input validation
+    CHECK_INPUT(means);
+    if (covars.has_value())
+        CHECK_INPUT2(covars.value(), means);
+    if (quats.has_value())
+        CHECK_INPUT2(quats.value(), means);
+    if (scales.has_value())
+        CHECK_INPUT2(scales.value(), means);
+    CHECK_INPUT2(viewmats, means);
+    CHECK_INPUT2(Ks, means);
+    CHECK_INPUT2(batch_ids, means);
+    CHECK_INPUT2(camera_ids, means);
+    CHECK_INPUT2(gaussian_ids, means);
+    CHECK_INPUT2(conics, means);
+    if (compensations.has_value())
+        CHECK_INPUT2(compensations.value(), means);
+    CHECK_INPUT2(v_means2d, means);
+    CHECK_INPUT2(v_depths, means);
+    CHECK_INPUT2(v_conics, means);
+    if (v_compensations.has_value())
+        CHECK_INPUT2(v_compensations.value(), means);
 
     uint32_t N = means.size(-2);
     uint32_t C = viewmats.size(-3);

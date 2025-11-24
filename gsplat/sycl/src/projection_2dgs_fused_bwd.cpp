@@ -26,17 +26,18 @@ projection_2dgs_fused_bwd(
     const at::Tensor v_ray_transforms, // [..., C, N, 3, 3]
     const bool viewmats_requires_grad
 ) {
-    CHECK_CONTIGUOUS(means);
-    CHECK_CONTIGUOUS(quats);
-    CHECK_CONTIGUOUS(scales);
-    CHECK_CONTIGUOUS(viewmats);
-    CHECK_CONTIGUOUS(Ks);
-    CHECK_CONTIGUOUS(radii);
-    CHECK_CONTIGUOUS(ray_transforms);
-    CHECK_CONTIGUOUS(v_means2d);
-    CHECK_CONTIGUOUS(v_depths);
-    CHECK_CONTIGUOUS(v_normals);
-    CHECK_CONTIGUOUS(v_ray_transforms);
+    DEVICE_GUARD(means);
+    CHECK_INPUT(means);
+    CHECK_INPUT2(quats, means);
+    CHECK_INPUT2(scales, means);
+    CHECK_INPUT2(viewmats, means);
+    CHECK_INPUT2(Ks, means);
+    CHECK_INPUT2(radii, means);
+    CHECK_INPUT2(ray_transforms, means);
+    CHECK_INPUT2(v_means2d, means);
+    CHECK_INPUT2(v_depths, means);
+    CHECK_INPUT2(v_normals, means);
+    CHECK_INPUT2(v_ray_transforms, means);
 
     TORCH_CHECK(
         means.dim() >= 2, "means must have at least 2 dimensions [..., N, 3]"

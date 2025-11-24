@@ -11,19 +11,12 @@ at::Tensor spherical_harmonics_fwd(
     const at::Tensor coeffs,             // [..., K, 3]
     const at::optional<at::Tensor> masks // [...]
 ) {
-    TORCH_CHECK(
-        dirs.is_contiguous(), "Input 'dirs' tensor must be contiguous."
-    );
-    TORCH_CHECK(
-        coeffs.is_contiguous(), "Input 'coeffs' tensor must be contiguous."
-    );
+    DEVICE_GUARD(dirs);
+    CHECK_INPUT(dirs);
+    CHECK_INPUT2(coeffs, dirs);
     if (masks.has_value()) {
-        TORCH_CHECK(
-            masks.value().is_contiguous(),
-            "Input 'masks' tensor must be contiguous."
-        );
+        CHECK_INPUT2(masks.value(), dirs);
     }
-
     TORCH_CHECK(
         dirs.size(-1) == 3,
         "Input 'dirs' tensor must have the last dimension of size 3."

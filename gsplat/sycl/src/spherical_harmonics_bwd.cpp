@@ -14,11 +14,12 @@ std::tuple<at::Tensor, at::Tensor> spherical_harmonics_bwd(
     const at::Tensor v_colors,            // [..., 3]
     bool compute_v_dirs
 ) {
-    CHECK_CONTIGUOUS(dirs);
-    CHECK_CONTIGUOUS(coeffs);
-    CHECK_CONTIGUOUS(v_colors);
+    DEVICE_GUARD(dirs);
+    CHECK_INPUT(dirs);
+    CHECK_INPUT2(coeffs, dirs);
+    CHECK_INPUT2(v_colors, dirs);
     if (masks.has_value()) {
-        CHECK_CONTIGUOUS(masks.value());
+        CHECK_INPUT2(masks.value(), dirs);
     }
 
     TORCH_CHECK(v_colors.size(-1) == 3, "v_colors must have last dimension 3");

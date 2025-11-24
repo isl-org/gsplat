@@ -15,6 +15,12 @@ std::tuple<at::Tensor, at::Tensor> relocation(
     at::Tensor binoms,    // [n_max, n_max]
     const int n_max
 ) {
+    DEVICE_GUARD(opacities);
+    // Check input tensors are contiguous and on the same device
+    CHECK_INPUT(opacities);
+    CHECK_INPUT2(scales, opacities);
+    CHECK_INPUT2(ratios, opacities);
+    CHECK_INPUT2(binoms, opacities);
     if (opacities.size(0) == 0) {
         return std::make_tuple(
             at::empty_like(opacities), at::empty_like(scales)

@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 def load_test_data(
     data_path: Optional[str] = None,
-    device="cuda",
+    device=torch.accelerator.current_accelerator(),
     scene_crop: Tuple[float, float, float, float, float, float] = (-2, -2, -2, 2, 2, 2),
     scene_grid: int = 1,
 ):
@@ -19,6 +19,8 @@ def load_test_data(
         data_path = os.path.join(os.path.dirname(__file__), "../assets/test_garden.npz")
     data = np.load(data_path)
     height, width = data["height"].item(), data["width"].item()
+    if device is None:
+        device = torch.device("cpu")
     viewmats = torch.from_numpy(data["viewmats"]).float().to(device)
     Ks = torch.from_numpy(data["Ks"]).float().to(device)
     means = torch.from_numpy(data["means3d"]).float().to(device)

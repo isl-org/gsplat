@@ -12,8 +12,9 @@ std::tuple<at::Tensor, at::Tensor> quat_scale_to_covar_preci_fwd(
     const bool compute_preci,
     const bool triu
 ) {
-    CHECK_CONTIGUOUS(quats);
-    CHECK_CONTIGUOUS(scales);
+    DEVICE_GUARD(quats);
+    CHECK_INPUT(quats);
+    CHECK_INPUT2(scales, quats);
     TORCH_CHECK(
         compute_covar || compute_preci,
         "Must compute at least one of covar or preci"

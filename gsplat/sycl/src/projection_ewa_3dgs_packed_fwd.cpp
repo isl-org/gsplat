@@ -33,18 +33,20 @@ projection_ewa_3dgs_packed_fwd(
     const bool calc_compensations,
     const CameraModelType camera_model
 ) {
-    TORCH_CHECK(
-        means.is_contiguous(), "Input 'means' tensor must be contiguous."
-    );
-    TORCH_CHECK(
-        viewmats.is_contiguous(), "Input 'viewmats' tensor must be contiguous."
-    );
-    TORCH_CHECK(Ks.is_contiguous(), "Input 'Ks' tensor must be contiguous.");
-    TORCH_CHECK(
-        means.device().type() == at::kXPU,
-        "Input tensors must be on XPU device."
-    );
-
+    DEVICE_GUARD(means);
+    // Input validation
+    CHECK_INPUT(means);
+    if (covars.has_value())
+        CHECK_INPUT2(covars.value(), means);
+    if (quats.has_value())
+        CHECK_INPUT2(quats.value(), means);
+    if (scales.has_value())
+        CHECK_INPUT2(scales.value(), means);
+    if (opacities.has_value())
+        CHECK_INPUT2(opacities.value(), means);
+    CHECK_INPUT2(viewmats, means);
+    CHECK_INPUT2(Ks, means);
+    
     uint32_t N = means.size(-2);
     uint32_t C = viewmats.size(-3);
     uint32_t B = means.numel() / (N * 3);
@@ -83,10 +85,8 @@ projection_ewa_3dgs_packed_fwd(
         );
     }
 
-    // --- Start of Correction ---
     // Allocate block_cnts as kInt, which the kernel expects.
     at::Tensor block_cnts = at::empty({(long)n_blocks}, int_opts);
-    // --- End of Correction ---
 
     auto &d_queue = at::xpu::getCurrentXPUStream().queue();
     sycl::range<2> local_range(1, N_THREADS_PACKED);
@@ -125,10 +125,7 @@ projection_ewa_3dgs_packed_fwd(
                         (scalar_t)radius_clip,
                         camera_model,
                         nullptr, // block_accum
-                        // --- Start of Correction ---
-                        // Pass the int32_t pointer directly, no cast needed.
                         block_cnts.data_ptr<int32_t>(),
-                        // --- End of Correction ---
                         nullptr,
                         nullptr,
                         nullptr,
@@ -144,11 +141,9 @@ projection_ewa_3dgs_packed_fwd(
         }
     );
 
-    // --- Start of Correction ---
     // Perform inclusive scan on a kLong version of block_cnts to prevent
     // overflow.
     at::Tensor block_accum_inclusive = at::cumsum(block_cnts.to(at::kLong), 0);
-    // --- End of Correction ---
 
     int64_t nnz = 0;
     if (n_blocks > 0) {
@@ -236,6 +231,7 @@ projection_ewa_3dgs_packed_fwd(
     }
 
     return std::make_tuple(
+        indptr,
         batch_ids,
         camera_ids,
         gaussian_ids,
@@ -243,7 +239,6 @@ projection_ewa_3dgs_packed_fwd(
         means2d,
         depths,
         conics,
-        indptr,
         compensations
     );
 }

@@ -12,13 +12,14 @@ std::tuple<at::Tensor, at::Tensor> quat_scale_to_covar_preci_bwd(
     const at::optional<at::Tensor> v_covars, // [..., 3, 3] or [..., 6]
     const at::optional<at::Tensor> v_precis  // [..., 3, 3] or [..., 6]
 ) {
-    CHECK_CONTIGUOUS(quats);
-    CHECK_CONTIGUOUS(scales);
+    DEVICE_GUARD(quats);
+    CHECK_INPUT(quats);
+    CHECK_INPUT2(scales, quats);
     if (v_covars.has_value()) {
-        CHECK_CONTIGUOUS(v_covars.value());
+        CHECK_INPUT2(v_covars.value(), quats);
     }
     if (v_precis.has_value()) {
-        CHECK_CONTIGUOUS(v_precis.value());
+        CHECK_INPUT2(v_precis.value(), quats);
     }
     TORCH_CHECK(
         v_covars.has_value() || v_precis.has_value(),

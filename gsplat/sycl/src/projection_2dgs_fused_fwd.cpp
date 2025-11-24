@@ -25,11 +25,12 @@ projection_2dgs_fused_fwd(
     const float far_plane,
     const float radius_clip
 ) {
-    CHECK_CONTIGUOUS(means);
-    CHECK_CONTIGUOUS(quats);
-    CHECK_CONTIGUOUS(scales);
-    CHECK_CONTIGUOUS(viewmats);
-    CHECK_CONTIGUOUS(Ks);
+    DEVICE_GUARD(means);
+    CHECK_INPUT(means);
+    CHECK_INPUT2(quats, means);
+    CHECK_INPUT2(scales, means);
+    CHECK_INPUT2(viewmats, means);
+    CHECK_INPUT2(Ks, means);
 
     TORCH_CHECK(
         means.dim() >= 2, "means must have at least 2 dimensions [..., N, 3]"

@@ -14,9 +14,10 @@ std::tuple<at::Tensor, at::Tensor> projection_ewa_simple_fwd(
     const uint32_t height,
     const CameraModelType camera_model
 ) {
-    CHECK_CONTIGUOUS(means);
-    CHECK_CONTIGUOUS(covars);
-    CHECK_CONTIGUOUS(Ks);
+    DEVICE_GUARD(means);
+    CHECK_INPUT(means);
+    CHECK_INPUT2(covars, means);
+    CHECK_INPUT2(Ks, means);
     TORCH_CHECK(
         means.dim() >= 3, "means must have at least 3 dimensions [..., C, N, 3]"
     );

@@ -72,7 +72,7 @@ def _compute_view_dirs_packed(
         avg_means_per_camera = nnz / (B * C)
         split_batch_camera_ops = (
             avg_means_per_camera > 10000
-            and campos_flat.is_cuda
+            and not campos_flat.is_cpu
             and campos_flat.requires_grad
         )
 
@@ -877,7 +877,7 @@ def _rasterization(
 
     .. note::
         This function still relies on gsplat's CUDA backend for some computation, but the
-        entire differentiable graph is on of PyTorch (and nerfacc) so could use Pytorch's
+        entire differentiable graph is on PyTorch (and nerfacc) so could use Pytorch's
         autograd for backpropagation.
 
     .. note::
@@ -888,7 +888,7 @@ def _rasterization(
         Compared to rasterization(), this function does not support some arguments such as
         `packed`, `sparse_grad` and `absgrad`.
     """
-    from gsplat.cuda._torch_impl import (
+    from gsplat._torch_impl import (
         _fully_fused_projection,
         _quat_scale_to_covar_preci,
         _rasterize_to_pixels,

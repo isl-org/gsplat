@@ -134,18 +134,19 @@ rasterize_to_pixels_2dgs_fwd(
     const at::Tensor tile_offsets, // [..., tile_height, tile_width]
     const at::Tensor flatten_ids   // [n_isects]
 ) {
-    // Check input tensors are contiguous
-    CHECK_CONTIGUOUS(means2d);
-    CHECK_CONTIGUOUS(ray_transforms);
-    CHECK_CONTIGUOUS(colors);
-    CHECK_CONTIGUOUS(opacities);
-    CHECK_CONTIGUOUS(normals);
-    CHECK_CONTIGUOUS(tile_offsets);
-    CHECK_CONTIGUOUS(flatten_ids);
+    DEVICE_GUARD(means2d);
+    // Check input tensors are contiguous and on the same device
+    CHECK_INPUT(means2d);
+    CHECK_INPUT2(ray_transforms, means2d);
+    CHECK_INPUT2(colors, means2d);
+    CHECK_INPUT2(opacities, means2d);
+    CHECK_INPUT2(normals, means2d);
+    CHECK_INPUT2(tile_offsets, means2d);
+    CHECK_INPUT2(flatten_ids, means2d);
     if (backgrounds.has_value())
-        CHECK_CONTIGUOUS(backgrounds.value());
+        CHECK_INPUT2(backgrounds.value(), means2d);
     if (masks.has_value())
-        CHECK_CONTIGUOUS(masks.value());
+        CHECK_INPUT2(masks.value(), means2d);
 
     // Get dimensions
     bool packed = means2d.dim() == 2;

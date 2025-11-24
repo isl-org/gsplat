@@ -3,8 +3,7 @@
 Usage:
 
 pytest <THIS_PY_FILE> -s
-
-# To force a specific backend for testing:
+```
 """
 
 import math
@@ -357,7 +356,7 @@ def test_fully_fused_projection_packed(
             depths,
             conics,
             compensations,
-        ) = fully_fused_projection(
+        ) = gsplat.fully_fused_projection(
             means,
             covars,
             None,

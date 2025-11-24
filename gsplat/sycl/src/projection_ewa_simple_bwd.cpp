@@ -16,11 +16,12 @@ std::tuple<at::Tensor, at::Tensor> projection_ewa_simple_bwd(
     const at::Tensor v_means2d, // [..., C, N, 2]
     const at::Tensor v_covars2d // [..., C, N, 2, 2]
 ) {
-    CHECK_CONTIGUOUS(means);
-    CHECK_CONTIGUOUS(covars);
-    CHECK_CONTIGUOUS(Ks);
-    CHECK_CONTIGUOUS(v_means2d);
-    CHECK_CONTIGUOUS(v_covars2d);
+    DEVICE_GUARD(means);
+    CHECK_INPUT(means);
+    CHECK_INPUT2(covars, means);
+    CHECK_INPUT2(Ks, means);
+    CHECK_INPUT2(v_means2d, means);
+    CHECK_INPUT2(v_covars2d, means);
 
     const uint32_t C = means.size(-3);
     const uint32_t N = means.size(-2);

@@ -16,6 +16,9 @@ else:
 requires_backend = pytest.mark.skipif(
     gsplat.BACKEND not in ("cuda", "sycl"), reason="No CUDA or SYCL backend available"
 )
+requires_cuda = pytest.mark.skipif(
+    gsplat.BACKEND != "cuda", reason="No CUDA backend available"
+)
 
 
 def expand(data: dict, batch_dims: Tuple[int, ...]):
@@ -134,7 +137,7 @@ def test_projection_2dgs(test_data, batch_dims: Tuple[int, ...]):
     torch.testing.assert_close(v_means, _v_means, rtol=1e-2, atol=6e-2)
 
 
-@requires_backend
+@requires_cuda
 @pytest.mark.parametrize("sparse_grad", [False])
 @pytest.mark.parametrize("batch_dims", [(), (2,), (1, 2)])
 def test_fully_fused_projection_packed_2dgs(

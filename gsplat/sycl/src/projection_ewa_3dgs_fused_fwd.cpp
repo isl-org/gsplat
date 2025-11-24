@@ -29,17 +29,19 @@ projection_ewa_3dgs_fused_fwd(
     const bool calc_compensations,
     const CameraModelType camera_model
 ) {
-    CHECK_CONTIGUOUS(means);
-    CHECK_CONTIGUOUS(viewmats);
-    CHECK_CONTIGUOUS(Ks);
+    DEVICE_GUARD(means);
+    // Input validation
+    CHECK_INPUT(means);
+    CHECK_INPUT2(viewmats, means);
+    CHECK_INPUT2(Ks, means);
     if (covars.has_value())
-        CHECK_CONTIGUOUS(covars.value());
+        CHECK_INPUT2(covars.value(), means);
     if (quats.has_value())
-        CHECK_CONTIGUOUS(quats.value());
+        CHECK_INPUT2(quats.value(), means);
     if (scales.has_value())
-        CHECK_CONTIGUOUS(scales.value());
+        CHECK_INPUT2(scales.value(), means);
     if (opacities.has_value())
-        CHECK_CONTIGUOUS(opacities.value());
+        CHECK_INPUT2(opacities.value(), means);
 
     TORCH_CHECK(
         means.dim() >= 2, "means must have at least 2 dimensions [..., N, 3]"

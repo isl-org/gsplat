@@ -4,20 +4,12 @@ import torch
 
 BACKEND: str = ""
 torch_acc = torch.cpu
-_force_backend = os.getenv("GSPLAT_BACKEND", "").lower()
 
-if _force_backend == "cuda" or (_force_backend == "" and torch.cuda.is_available()):
+if torch.cuda.is_available():
     BACKEND = "cuda"
     torch_acc = torch.cuda
     print("gsplat: Using CUDA backend.", file=sys.stderr)
-
-if (
-    not BACKEND
-    and _force_backend in ("sycl", "xpu")
-    or _force_backend == ""
-    and hasattr(torch, "xpu")
-    and torch.xpu.is_available()
-):
+elif hasattr(torch, "xpu") and torch.xpu.is_available():
     BACKEND = "sycl"
     torch_acc = torch.xpu
     print("gsplat: Using SYCL XPU backend.", file=sys.stderr)

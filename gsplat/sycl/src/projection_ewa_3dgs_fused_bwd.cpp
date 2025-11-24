@@ -30,25 +30,26 @@ projection_ewa_3dgs_fused_bwd(
     const at::optional<at::Tensor> v_compensations, // [..., C, N] optional
     const bool viewmats_requires_grad
 ) {
+    DEVICE_GUARD(means);
     // Input validation
-    CHECK_CONTIGUOUS(means);
+    CHECK_INPUT(means);
     if (covars.has_value())
-        CHECK_CONTIGUOUS(covars.value());
+        CHECK_INPUT2(covars.value(), means);
     if (quats.has_value())
-        CHECK_CONTIGUOUS(quats.value());
+        CHECK_INPUT2(quats.value(), means);
     if (scales.has_value())
-        CHECK_CONTIGUOUS(scales.value());
-    CHECK_CONTIGUOUS(viewmats);
-    CHECK_CONTIGUOUS(Ks);
-    CHECK_CONTIGUOUS(radii);
-    CHECK_CONTIGUOUS(conics);
+        CHECK_INPUT2(scales.value(), means);
+    CHECK_INPUT2(viewmats, means);
+    CHECK_INPUT2(Ks, means);
+    CHECK_INPUT2(radii, means);
+    CHECK_INPUT2(conics, means);
     if (compensations.has_value())
-        CHECK_CONTIGUOUS(compensations.value());
-    CHECK_CONTIGUOUS(v_means2d);
-    CHECK_CONTIGUOUS(v_depths);
-    CHECK_CONTIGUOUS(v_conics);
+        CHECK_INPUT2(compensations.value(), means);
+    CHECK_INPUT2(v_means2d, means);
+    CHECK_INPUT2(v_depths, means);
+    CHECK_INPUT2(v_conics, means);
     if (v_compensations.has_value())
-        CHECK_CONTIGUOUS(v_compensations.value());
+        CHECK_INPUT2(v_compensations.value(), means);
 
     // Dimensions
     const uint32_t N = means.size(-2);

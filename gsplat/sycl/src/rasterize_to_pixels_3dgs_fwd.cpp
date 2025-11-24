@@ -115,16 +115,17 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor> rasterize_to_pixels_3dgs_fwd(
     const at::Tensor tile_offsets,
     const at::Tensor flatten_ids
 ) {
-    CHECK_CONTIGUOUS(means2d);
-    CHECK_CONTIGUOUS(conics);
-    CHECK_CONTIGUOUS(colors);
-    CHECK_CONTIGUOUS(opacities);
-    CHECK_CONTIGUOUS(tile_offsets);
-    CHECK_CONTIGUOUS(flatten_ids);
+    DEVICE_GUARD(means2d);
+    CHECK_INPUT(means2d);
+    CHECK_INPUT2(conics, means2d);
+    CHECK_INPUT2(colors, means2d);
+    CHECK_INPUT2(opacities, means2d);
+    CHECK_INPUT2(tile_offsets, means2d);
+    CHECK_INPUT2(flatten_ids, means2d);
     if (backgrounds.has_value())
-        CHECK_CONTIGUOUS(backgrounds.value());
+        CHECK_INPUT2(backgrounds.value(), means2d);
     if (masks.has_value())
-        CHECK_CONTIGUOUS(masks.value());
+        CHECK_INPUT2(masks.value(), means2d);
 
     TORCH_CHECK(means2d.dim() >= 2, "means2d must have at least 2 dimensions");
     TORCH_CHECK(colors.dim() >= 2, "colors must have at least 2 dimensions");
