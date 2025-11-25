@@ -15,6 +15,7 @@ requires_backend = pytest.mark.skipif(
     reason="No CUDA or SYCL XPU backend available",
 )
 
+
 def _main_all_gather_int32(local_rank: int, world_rank: int, world_size: int, _):
     device = torch.device(local_rank)
 

@@ -231,7 +231,7 @@ def depth_to_normal(
     return normals
 
 
-def get_projection_matrix(znear, zfar, fovX, fovY, device=torch.accelerator.current_accelerator()) -> Tensor:
+def get_projection_matrix(znear, zfar, fovX, fovY, device=None) -> Tensor:
     """Create OpenGL-style projection matrix"""
     tanHalfFovY = math.tan((fovY / 2))
     tanHalfFovX = math.tan((fovX / 2))
@@ -242,7 +242,11 @@ def get_projection_matrix(znear, zfar, fovX, fovY, device=torch.accelerator.curr
     left = -right
 
     if device is None:
-        device = torch.device("cpu")
+        device = (
+            torch.accelerator.current_accelerator()
+            if torch.accelerator.is_available()
+            else torch.device("cpu")
+        )
     P = torch.zeros(4, 4, device=device)
 
     z_sign = 1.0

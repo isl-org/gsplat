@@ -7,6 +7,7 @@ from torch import Tensor
 from . import BACKEND
 from ._wrapper import _make_lazy_device_func
 
+
 def compute_relocation(
     opacities: Tensor,  # [N]
     scales: Tensor,  # [N, 3]
