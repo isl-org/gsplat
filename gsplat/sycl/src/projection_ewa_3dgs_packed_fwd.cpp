@@ -227,7 +227,7 @@ projection_ewa_3dgs_packed_fwd(
 
     // Set the last element of indptr
     if (nrows > 0) {
-        indptr.index_put_({(long)nrows}, nnz);
+        indptr.index_put_({at::indexing::TensorIndex((int64_t)nrows)}, nnz);
     }
 
     return std::make_tuple(

@@ -86,7 +86,7 @@ template <typename T> struct PackedProjectionFwdKernel {
     void operator()(sycl::nd_item<2> item) const {
         auto group = item.get_group();
 
-        sycl::id<2> group_id = item.get_group_id();
+        sycl::id<2> group_id = item.get_group().get_group_id();
         sycl::range<2> group_range = item.get_group_range();
         sycl::id<2> local_id_2d = item.get_local_id();
         sycl::range<2> local_range = item.get_local_range();
