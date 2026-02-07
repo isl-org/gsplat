@@ -1,6 +1,6 @@
 # GSPLAT on Intel GPUs
 
-``gsplat`` supports creation and rendering on Intel GPUs through SYCL kernel backend. This provides support for both integrated (Alder Lake Arc and onward) as well as discrete GPUs (Arc Alchemist and newer, such as the A770 and B580).
+`gsplat` supports creation and rendering on Intel GPUs through the SYCL kernel backend. This provides support for both integrated (Alder Lake Arc and onward) and discrete GPUs (Arc Alchemist and newer, such as the A770 and B580).
 
 ## Supported Features:
 
@@ -27,12 +27,14 @@ The kernels are optimized and use mixed precision (some data is represented as h
 
 -   **Intel oneAPI Toolkit:** Ensure you have the [Intel oneAPI Toolkit installed](https://www.intel.com/content/www/us/en/developer/articles/guide/installation-guide-for-oneapi-toolkits.html). This provides the necessary compilers and libraries for SYCL development.
 
-    **Note:** The OneAPI tolkit version must match the version used to build PyTorch XPU. Check the PyTorch XPU OneAPI version with:
+    **Note:** The OneAPI toolkit version must match the version used to build PyTorch XPU. Check the PyTorch XPU OneAPI version with:
 
-        pip show intel-cmplr-lib-ur   # dependency of torch-xpu
-        ...
-        Version: 2025.3.1
-        ...
+    ```bash
+    pip show intel-cmplr-lib-ur   # dependency of torch-xpu
+    # ...
+    # Version: 2025.3.1
+    # ...
+    ```
 
 - Configure your build environment:
 
@@ -45,8 +47,6 @@ The kernels are optimized and use mixed precision (some data is represented as h
     Or in Windows, setup your Visual Studio build environment and then OneAPI build environment. For example:
 
     ```ps1
-    cmd /k "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
-    powershell
     cmd /k "C:\Program Files (x86)\Intel\oneAPI\setvars.bat"
     powershell
     $env:DISTUTILS_USE_SDK=1
@@ -55,13 +55,13 @@ The kernels are optimized and use mixed precision (some data is represented as h
 - Finally, build and install the project's Python extension.
 
     ```bash
-    pip install --no-build-isolation .
+    pip install --extra-index-url=https://download.pytorch.org/whl/xpu .
     ```
 
     Alternately, you can build a wheel for distribution with:
 
     ```bash
-    python -m build --no-isolation --wheel .
+    PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/xpu python -m build --no-isolation --wheel .
     ```
 
 ## Evaluation
@@ -71,10 +71,10 @@ We evaluate gsplat-xpu on the Mip-NeRF 360 dataset and measure PSNR, SSIM, LPIPS
     ```bash
     cd examples
     python datasets/download_dataset.py
-    pip install --no-build-isolation -r requirements.txt
+    pip install --extra-index-url=https://download.pytorch.org/whl/xpu -r requirements.txt
     ```
 
-The last command will also build and install the `fused-ssim` package. This needs the `--no-build-isolation` option. Before running benchmarks, you can add `--max-steps 7000` to each `simple_trainer.py` command in `benchmarks/basic{,_2dgs}.sh`, if you have limited memory, or want to run the training faster. Run the benchmarks with:
+The last command will also build and install the `fused-ssim` package. Before running benchmarks, you can add `--max-steps 7000` to each `simple_trainer.py` command in `benchmarks/basic{,_2dgs}.sh`, if you have limited memory, or want to run the training faster. Run the benchmarks with:
 
     ```bash
     bash benchmarks/basic.sh

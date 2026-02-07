@@ -51,22 +51,26 @@ class SyclBuildExtension(BuildExtension):
 
     def run(self):
         print("--- Running SYCL build via CMake ---")
+        import shutil
+
         sycl_dir = os.path.abspath("gsplat/sycl")
         build_dir = os.path.join(self.build_temp, "sycl")
         os.makedirs(build_dir, exist_ok=True)
         jobs = os.getenv("MAX_JOBS", "10")
-
         install_dir = os.path.abspath(self.build_lib)
 
+        cmake_args = [
+            "cmake",
+            "-G",
+            "Ninja",
+            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={os.path.join(install_dir, 'gsplat')}",
+            sycl_dir,
+        ]
+        # ninja not found in isolated env during "python -m build"
+        if ninja_path := shutil.which("ninja"):
+            cmake_args.append(f"-DCMAKE_MAKE_PROGRAM={ninja_path}")
         sp.check_call(
-            [
-                "cmake",
-                "-G",
-                "Ninja",
-                "-DCMAKE_BUILD_TYPE=Release",
-                f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={os.path.join(install_dir, 'gsplat')}",
-                sycl_dir,
-            ],
+            cmake_args,
             cwd=build_dir,
         )
         sp.check_call(
@@ -201,7 +205,6 @@ setup(
             "build",
             "twine",
         ],
-        "sycl": ["pybind11>=2.10"],
     },
     ext_modules=ext_modules,
     cmdclass=cmdclass,

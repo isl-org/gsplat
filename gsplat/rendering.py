@@ -622,7 +622,7 @@ def rasterization(
             (radii,) = all_to_all_tensor_list(
                 world_size, [radii], cnts, output_splits=collected_splits
             )
-            (means2d, depths, conics, opacities, colors) = all_to_all_tensor_list(
+            means2d, depths, conics, opacities, colors = all_to_all_tensor_list(
                 world_size,
                 [means2d, depths, conics, opacities, colors],
                 cnts,
@@ -650,7 +650,7 @@ def rasterization(
             gaussian_ids = gaussian_ids + offsets
 
             # all to all communication across all ranks.
-            (camera_ids, gaussian_ids) = all_to_all_tensor_list(
+            camera_ids, gaussian_ids = all_to_all_tensor_list(
                 world_size,
                 [camera_ids, gaussian_ids],
                 cnts,
@@ -674,7 +674,7 @@ def rasterization(
             )
             radii = reshape_view(C, radii, N_world)
 
-            (means2d, depths, conics, opacities, colors) = all_to_all_tensor_list(
+            means2d, depths, conics, opacities, colors = all_to_all_tensor_list(
                 world_size,
                 [
                     means2d.flatten(0, 1),

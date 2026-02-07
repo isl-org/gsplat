@@ -22,3 +22,5 @@ except ImportError:
 if os.name == "nt":
     for dp in dllpath:
         dp.close()
+
+__all__ = ["_C"]

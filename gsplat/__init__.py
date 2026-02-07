@@ -43,7 +43,6 @@ from .rendering import (
 from .strategy import DefaultStrategy, MCMCStrategy, Strategy
 from .version import __version__
 
-
 __all__ = [
     "BACKEND",
     "torch_acc",

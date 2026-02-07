@@ -16,59 +16,56 @@ endif()
 
 find_package(Python 3.8 COMPONENTS Interpreter Development.Module REQUIRED)
 
-
 execute_process(
-  COMMAND "${Python_EXECUTABLE}" -c "import torch.utils; print(torch.utils.cmake_prefix_path)"
+  COMMAND "${Python_EXECUTABLE}" -c "
+import sys, os, glob
+try:
+    import torch
+    from torch.utils import cpp_extension
+    import pybind11
+except ImportError:
+    sys.exit(1)
+
+lib_paths = cpp_extension.library_paths(True)
+base_path = os.path.join(lib_paths[0], '${CMAKE_SHARED_LIBRARY_PREFIX}torch_python')
+matches = glob.glob(base_path + '*')
+torch_python_lib = matches[0] if matches else ''
+
+print(f'{torch.utils.cmake_prefix_path};{torch_python_lib};{pybind11.get_cmake_dir()}')
+"
+  OUTPUT_VARIABLE PYTHON_CONFIG_LIST
+  RESULT_VARIABLE PYTHON_CONFIG_RESULT
   OUTPUT_STRIP_TRAILING_WHITESPACE
-  OUTPUT_VARIABLE Torch_DIR_From_Python 
-  RESULT_VARIABLE _torch_path_result    
-  ERROR_QUIET                           
 )
-if(NOT _torch_path_result EQUAL 0)
-  message(WARNING "Failed to get Torch CMake path from Python. "
-                  "Make sure PyTorch is installed in the Python environment: ${Python_EXECUTABLE}")
-  set(Torch_DIR_From_Python "")
+
+if(NOT PYTHON_CONFIG_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to retrieve configuration from Python. Ensure torch and pybind11 are installed.")
 endif()
+
+list(LENGTH PYTHON_CONFIG_LIST LIST_LEN)
+if(LIST_LEN LESS 3)
+    message(FATAL_ERROR "Python script returned incomplete information.")
+endif()
+list(GET PYTHON_CONFIG_LIST 0 Torch_DIR_From_Python)
+list(GET PYTHON_CONFIG_LIST 1 TORCH_PYTHON_LIB)
+list(GET PYTHON_CONFIG_LIST 2 PYBIND11_CMAKE_DIR)
 
 if(Torch_DIR_From_Python AND IS_DIRECTORY "${Torch_DIR_From_Python}")
   set(Torch_DIR ${Torch_DIR_From_Python})
   message(STATUS "Found Torch CMake directory via Python: ${Torch_DIR}")
   find_package(Torch REQUIRED HINTS ${Torch_DIR_From_Python})
 else()
-  message(FATAL_ERROR "Could not find Torch via Python introspection. "
-                      "Please ensure PyTorch is installed or set CMAKE_PREFIX_PATH/Torch_DIR manually.")
+  message(FATAL_ERROR "Could not find Torch via Python introspection.")
 endif()
 
-string(CONCAT TORCH_PYTHON_LIB_NAME ${CMAKE_SHARED_LIBRARY_PREFIX} "torch_python" ${CMAKE_LINK_LIBRARY_SUFFIX})
-execute_process(
-  COMMAND "${Python_EXECUTABLE}" -c "import os; from torch.utils import cpp_extension; print(os.path.join(cpp_extension.library_paths(True)[0], '${TORCH_PYTHON_LIB_NAME}'))"
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  OUTPUT_VARIABLE TORCH_PYTHON_LIB
-)
-
-# Add a fallback to find the file if it exists with a different extension
 if (NOT EXISTS "${TORCH_PYTHON_LIB}")
-    execute_process(
-      COMMAND "${Python_EXECUTABLE}" -c "import os, glob; from torch.utils import cpp_extension; base_path = os.path.join(cpp_extension.library_paths(True)[0], '${CMAKE_SHARED_LIBRARY_PREFIX}torch_python'); matches = glob.glob(base_path + '.*'); print(matches[0] if matches else '')"
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      OUTPUT_VARIABLE TORCH_PYTHON_LIB_FALLBACK
-    )
-    if (EXISTS "${TORCH_PYTHON_LIB_FALLBACK}")
-        set(TORCH_PYTHON_LIB "${TORCH_PYTHON_LIB_FALLBACK}")
-        message(STATUS "Found torch_python library using fallback: ${TORCH_PYTHON_LIB}")
-    endif()
-endif()
-
-
-if (NOT EXISTS "${TORCH_PYTHON_LIB}")
-    message(FATAL_ERROR "Could not find ${TORCH_PYTHON_LIB_NAME} at ${TORCH_PYTHON_LIB}. Please check your PyTorch installation.")
+    message(FATAL_ERROR "Could not find torch_python library.")
 else()
     message(STATUS "Found torch_python library at: ${TORCH_PYTHON_LIB}")
 endif()
 
-
-set(PYBIND11_FINDPYTHON ON)
-find_package(pybind11 CONFIG REQUIRED HINTS "${Python_SITELIB}/pybind11/share/cmake/pybind11")
+message(STATUS "Found pybind11 in ${PYBIND11_CMAKE_DIR}")
+find_package(pybind11 CONFIG REQUIRED HINTS ${PYBIND11_CMAKE_DIR} "${Python_SITELIB}/pybind11/share/cmake/pybind11")
 
 set(SYCL_SOURCES
   ext.cpp
