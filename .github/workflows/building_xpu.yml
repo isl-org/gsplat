@@ -1,0 +1,86 @@
+name: Build XPU Wheels
+
+on: [workflow_call, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  build_wheels:
+    runs-on: ubuntu-22.04
+    environment: production
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10']
+        torch-version: ['2.5.0', '2.6.0']
+        xpu-version: ['xpu']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Free up disk space
+        run: |
+          echo "Disk space before cleanup:"
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          echo "Disk space after cleanup:"
+          df -h
+        shell: bash
+
+      - name: Install Intel oneAPI DPC++ compiler
+        run: bash .github/workflows/xpu/Linux.sh
+        shell: bash
+
+      - name: Install PyTorch ${{ matrix.torch-version }}+${{ matrix.xpu-version }}
+        run: |
+          pip install torch==${{ matrix.torch-version }} --index-url https://download.pytorch.org/whl/${{ matrix.xpu-version }}
+          python -c "import torch; print('PyTorch:', torch.__version__)"
+          python -c "import torch; print('XPU Available:', torch.xpu.is_available() if hasattr(torch, 'xpu') else False)"
+        shell: bash
+
+      - name: Set version
+        run: |
+          VERSION=`sed -n 's/^__version__ = "\(.*\)"/\1/p' gsplat/version.py`
+          TORCH_VERSION=`echo "pt${{ matrix.torch-version }}" | sed "s/..$//" | sed "s/\.//g"`
+          XPU_VERSION=`echo ${{ matrix.xpu-version }}`
+          echo "New version name: $VERSION+$TORCH_VERSION$XPU_VERSION"
+          sed -i "s/$VERSION/$VERSION+$TORCH_VERSION$XPU_VERSION/" gsplat/version.py
+        shell: bash
+
+      - name: Upgrade pip
+        run: |
+          pip install --upgrade setuptools
+          pip install ninja pybind11
+        shell: bash
+
+      - name: Build wheel
+        run: |
+          pip install wheel
+          source /opt/intel/oneapi/setvars.sh
+          BUILD_SYCL=1 MAX_JOBS=$(nproc) python setup.py bdist_wheel --dist-dir=dist
+        shell: bash
+
+      - name: Test wheel
+        run: |
+          cd dist
+          ls -lah
+          pip install *.whl
+          python -c "import gsplat; print('gsplat:', gsplat.__version__)"
+          cd ..
+        shell: bash
+
+      - uses: actions/upload-artifact@v4
+        with:
+          # Include unique matrix values to avoid name collisions.
+          name: xpu_wheels_python${{ matrix.python-version }}-ubuntu-22.04-${{ matrix.torch-version }}-${{ matrix.xpu-version }}
+          path: dist/*.whl
