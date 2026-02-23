@@ -13,9 +13,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.10']
-        torch-version: ['2.5.0', '2.6.0']
-        xpu-version: ['xpu']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        torch-version: ['2.10.0']
 
     steps:
       - name: Checkout repository
@@ -37,24 +36,30 @@ jobs:
           df -h
         shell: bash
 
-      - name: Install Intel oneAPI DPC++ compiler
-        run: bash .github/workflows/xpu/Linux.sh
-        shell: bash
-
-      - name: Install PyTorch ${{ matrix.torch-version }}+${{ matrix.xpu-version }}
+      - name: Install PyTorch ${{ matrix.torch-version }}+xpu
         run: |
-          pip install torch==${{ matrix.torch-version }} --index-url https://download.pytorch.org/whl/${{ matrix.xpu-version }}
+          pip install torch==${{ matrix.torch-version }} --index-url https://download.pytorch.org/whl/xpu
           python -c "import torch; print('PyTorch:', torch.__version__)"
           python -c "import torch; print('XPU Available:', torch.xpu.is_available() if hasattr(torch, 'xpu') else False)"
+        shell: bash
+
+      - name: Install Intel oneAPI C++ Essentials
+        run: |
+          ONEAPI_VERSION=$(pip show intel-sycl-rt 2>/dev/null | grep ^Version | awk '{print $2}')
+          if [ -z "${ONEAPI_VERSION}" ]; then
+            echo "Error: intel-sycl-rt not found. Ensure PyTorch XPU was installed successfully." >&2
+            exit 1
+          fi
+          echo "Detected intel-sycl-rt version: ${ONEAPI_VERSION}"
+          bash .github/workflows/xpu/Linux.sh ${ONEAPI_VERSION}
         shell: bash
 
       - name: Set version
         run: |
           VERSION=`sed -n 's/^__version__ = "\(.*\)"/\1/p' gsplat/version.py`
           TORCH_VERSION=`echo "pt${{ matrix.torch-version }}" | sed "s/..$//" | sed "s/\.//g"`
-          XPU_VERSION=`echo ${{ matrix.xpu-version }}`
-          echo "New version name: $VERSION+$TORCH_VERSION$XPU_VERSION"
-          sed -i "s/$VERSION/$VERSION+$TORCH_VERSION$XPU_VERSION/" gsplat/version.py
+          echo "New version name: $VERSION+${TORCH_VERSION}xpu"
+          sed -i "s/$VERSION/$VERSION+${TORCH_VERSION}xpu/" gsplat/version.py
         shell: bash
 
       - name: Upgrade pip
@@ -82,5 +87,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           # Include unique matrix values to avoid name collisions.
-          name: xpu_wheels_python${{ matrix.python-version }}-ubuntu-22.04-${{ matrix.torch-version }}-${{ matrix.xpu-version }}
+          name: xpu_wheels_python${{ matrix.python-version }}-ubuntu-22.04-${{ matrix.torch-version }}
           path: dist/*.whl
