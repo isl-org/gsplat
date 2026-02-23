@@ -29,7 +29,7 @@ if not has_cuda:
     except (ImportError, AttributeError):
         pass
 
-BUILD_SYCL = has_xpu
+BUILD_SYCL = has_xpu or os.getenv("BUILD_SYCL", "0") == "1"
 BUILD_NO_CUDA = os.getenv("BUILD_NO_CUDA", "0") == "1"
 WITH_SYMBOLS = os.getenv("WITH_SYMBOLS", "0") == "1"
 LINE_INFO = os.getenv("LINE_INFO", "0") == "1"
