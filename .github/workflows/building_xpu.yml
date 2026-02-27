@@ -6,15 +6,35 @@ permissions:
   contents: read
 
 jobs:
+  build_sdist:
+    name: Build source distribution and no binary wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Strip unsupported tags in README
+        run: |
+          sed -i '/<!-- pypi-strip -->/,/<!-- \/pypi-strip -->/d' README.md
+      - name: Build sdist
+        run: BUILD_NO_CUDA=1 pipx run build --sdist
+      - name: Build wheel with no binaries
+        run: BUILD_NO_CUDA=1 python setup.py bdist_wheel --dist-dir=dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pypi_packages
+          path: dist/*.tar.gz
+
   build_wheels:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
     environment: production
 
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-22.04, windows-2022]
         python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
-        torch-version: ['2.10.0']
+        torch-version: ['2.10']
 
     steps:
       - name: Checkout repository
@@ -28,6 +48,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Free up disk space
+        if: ${{ runner.os == 'Linux' }}
         run: |
           echo "Disk space before cleanup:"
           df -h
@@ -51,7 +72,7 @@ jobs:
             exit 1
           fi
           echo "Detected intel-sycl-rt version: ${ONEAPI_VERSION}"
-          bash .github/workflows/xpu/Linux.sh ${ONEAPI_VERSION}
+          bash .github/workflows/xpu/${RUNNER_OS}.sh ${ONEAPI_VERSION}
         shell: bash
 
       - name: Set version
@@ -64,15 +85,19 @@ jobs:
 
       - name: Upgrade pip
         run: |
-          pip install --upgrade setuptools
+          pip install --upgrade setuptools wheel
           pip install ninja pybind11
         shell: bash
 
       - name: Build wheel
         run: |
-          pip install wheel
-          source /opt/intel/oneapi/setvars.sh
-          BUILD_SYCL=1 MAX_JOBS=$(nproc) python setup.py bdist_wheel --dist-dir=dist
+          export MAX_JOBS=${NUMBER_OF_PROCESSORS:-$(nproc)} BUILD_SYCL=1
+          if [ "${RUNNER_OS}" = "Windows" ]; then
+            cmd //C '"C:\Program Files (x86)\Intel\oneAPI\setvars.bat" >nul && python setup.py bdist_wheel --dist-dir=dist'
+          else
+            source /opt/intel/oneapi/setvars.sh
+            python setup.py bdist_wheel --dist-dir=dist
+          fi
         shell: bash
 
       - name: Test wheel
@@ -87,5 +112,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           # Include unique matrix values to avoid name collisions.
-          name: xpu_wheels_python${{ matrix.python-version }}-ubuntu-22.04-${{ matrix.torch-version }}
+          name: xpu_wheels_python${{ matrix.python-version }}-${{ matrix.os }}-${{ matrix.torch-version }}
           path: dist/*.whl
