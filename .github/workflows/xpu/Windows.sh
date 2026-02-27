@@ -37,23 +37,16 @@ fi
 # Install only compiler + oneDPL + oneTBB; override via ONEAPI_WINDOWS_COMPONENTS.
 ONEAPI_WINDOWS_COMPONENTS="${ONEAPI_WINDOWS_COMPONENTS:-intel.oneapi.win.dpcpp-cpp-compiler;intel.oneapi.win.dpl;intel.oneapi.win.tbb.devel}"
 
-INSTALLER_FILE="/tmp/w_cpp-essentials_p_${VERSION}.exe"
+INSTALLER_FILE="w_cpp-essentials_p_${VERSION}.exe"
 echo "Downloading Intel C++ Essentials online installer from: ${INSTALLER_URL}"
 curl -fL "${INSTALLER_URL}" --output "${INSTALLER_FILE}"
 
 echo "Installing components: ${ONEAPI_WINDOWS_COMPONENTS}"
 PowerShell -NoProfile -Command "\$p = Start-Process -FilePath '${INSTALLER_FILE}' -ArgumentList '-s --action install --eula accept --components=${ONEAPI_WINDOWS_COMPONENTS}' -Wait -PassThru -NoNewWindow; exit \$p.ExitCode"
-rm -f "${INSTALLER_FILE}"
-
-ONEAPI_SETVARS="/c/Program Files (x86)/Intel/oneAPI/setvars.bat"
-if [[ ! -f "${ONEAPI_SETVARS}" ]]; then
-  echo "Error: oneAPI installation completed but setvars.bat was not found at '${ONEAPI_SETVARS}'." >&2
-  exit 1
-fi
 
 echo "Verifying oneAPI environment..."
-if ! cmd //C '"C:\Program Files (x86)\Intel\oneAPI\setvars.bat" >nul && where icx'; then
-  echo "Error: icx (Intel DPC++/C++ Compiler) not found after sourcing setvars.bat." >&2
+if ! cmd //C '"C:\Program Files (x86)\Intel\oneAPI\setvars.bat" >nul && icx-cl --version'; then
+  echo "Error: icx-cl (Intel DPC++/C++ Compiler) not found after sourcing setvars.bat." >&2
   exit 1
 fi
 
