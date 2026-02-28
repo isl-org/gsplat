@@ -56,10 +56,12 @@ def get_ext():
             jobs = os.getenv("MAX_JOBS", "10")
             install_dir = os.path.abspath(self.build_lib)
 
+            cfg = "RelWithDebInfo" if WITH_SYMBOLS or LINE_INFO else "Release"
             cmake_args = [
                 "cmake",
                 "-G",
                 "Ninja",
+                f"-DCMAKE_BUILD_TYPE={cfg}",
                 f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={os.path.join(install_dir, 'gsplat')}",
                 sycl_dir,
             ]
@@ -70,11 +72,11 @@ def get_ext():
                 cmake_args,
                 cwd=build_dir,
             )
-            cfg = "RelWithDebInfo" if WITH_SYMBOLS or LINE_INFO else "Release"
             sp.check_call(
                 ["cmake", "--build", ".", "--config", cfg, "--", "-v", f"-j{jobs}"],
                 cwd=build_dir,
             )
+
     return SyclBuildExtension
 
 
