@@ -89,16 +89,22 @@ jobs:
           pip install ninja pybind11
         shell: bash
 
-      - name: Build wheel
+      - name: Build wheel (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: cmd
         run: |
-          export MAX_JOBS=${NUMBER_OF_PROCESSORS:-$(nproc)} BUILD_SYCL=1
-          if [ "${RUNNER_OS}" = "Windows" ]; then
-            cmd //C '"C:\Program Files (x86)\Intel\oneAPI\setvars.bat" >nul && python setup.py bdist_wheel --dist-dir=dist'
-          else
-            source /opt/intel/oneapi/setvars.sh
-            python setup.py bdist_wheel --dist-dir=dist
-          fi
+          set MAX_JOBS=%NUMBER_OF_PROCESSORS%
+          set BUILD_SYCL=1
+          call "C:\Program Files (x86)\Intel\oneAPI\setvars.bat"
+          python setup.py bdist_wheel --dist-dir=dist
+
+      - name: Build wheel (Linux)
+        if: ${{ runner.os == 'Linux' }}
         shell: bash
+        run: |
+          export MAX_JOBS=$(nproc) BUILD_SYCL=1
+          source /opt/intel/oneapi/setvars.sh
+          python setup.py bdist_wheel --dist-dir=dist
 
       - name: Test wheel
         run: |
