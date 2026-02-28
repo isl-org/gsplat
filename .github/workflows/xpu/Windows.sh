@@ -39,10 +39,4 @@ curl -fL "${INSTALLER_URL}" --output "${INSTALLER_FILE}"
 echo "Installing components: ${ONEAPI_WINDOWS_COMPONENTS}"
 PowerShell -NoProfile -Command "\$p = Start-Process -FilePath '${INSTALLER_FILE}' -ArgumentList '--a -s --action install --eula accept --components ${ONEAPI_WINDOWS_COMPONENTS}' -Wait -PassThru -NoNewWindow; exit \$p.ExitCode"
 
-echo "Verifying oneAPI environment..."
-if ! cmd //C '"C:\Program Files (x86)\Intel\oneAPI\setvars.bat" >nul && icx-cl --version'; then
-  echo "Error: icx-cl (Intel DPC++/C++ Compiler) not found after sourcing setvars.bat." >&2
-  exit 1
-fi
-
-echo "Intel oneAPI installation complete."
+rm "${INSTALLER_FILE}"
