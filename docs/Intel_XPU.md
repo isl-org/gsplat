@@ -70,13 +70,15 @@ We evaluate gsplat-xpu on the Mip-NeRF 360 dataset and measure PSNR, SSIM, LPIPS
 
     ```bash
     cd examples
+    pip install --extra-index-url=https://download.pytorch.org/whl/xpu -r requirements_xpu.txt
+    # download mipnerf_360 benchmark data
     python datasets/download_dataset.py
-    pip install --extra-index-url=https://download.pytorch.org/whl/xpu -r requirements.txt
     ```
 
 The last command will also build and install the `fused-ssim` package. Before running benchmarks, you can add `--max-steps 7000` to each `simple_trainer.py` command in `benchmarks/basic{,_2dgs}.sh`, if you have limited memory, or want to run the training faster. Run the benchmarks with:
 
     ```bash
+    # run batch evaluation
     bash benchmarks/basic.sh
     bash benchmarks/basic_2dgs.sh
     ```

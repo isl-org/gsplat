@@ -41,6 +41,8 @@ pip install ninja numpy jaxtyping rich
 pip install gsplat --index-url https://docs.gsplat.studio/whl/pt20cu118
 ```
 
+For Intel XPU (integrated and discrete GPU) support, see [Intel XPU](docs/Intel_XPU.md).
+
 To build gsplat from source on Windows, please check [this instruction](docs/INSTALL_WIN.md).
 
 ## Evaluation
