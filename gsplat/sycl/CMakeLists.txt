@@ -27,8 +27,9 @@ except ImportError:
     sys.exit(1)
 
 lib_paths = cpp_extension.library_paths(True)
-base_path = os.path.join(lib_paths[0], '${CMAKE_SHARED_LIBRARY_PREFIX}torch_python')
-matches = glob.glob(base_path + '*')
+lib_name = 'libtorch_python.so*' if sys.platform != 'win32' else 'torch_python.lib'
+base_path = os.path.join(lib_paths[0], lib_name)
+matches = glob.glob(base_path)
 torch_python_lib = matches[0] if matches else ''
 
 print(f'{torch.utils.cmake_prefix_path};{torch_python_lib};{pybind11.get_cmake_dir()}')
