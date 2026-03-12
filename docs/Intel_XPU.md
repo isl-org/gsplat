@@ -25,6 +25,12 @@ The kernels are optimized and use mixed precision (some data is represented as h
     pip install torch torchvision --index-url https://download.pytorch.org/whl/xpu
     ```
 
+    Next install gsplat-xpu directly from here (for PyTorch 2.10+xpu). Otherwise, you can build and install from source.
+
+    ```bash
+    pip install gsplat --find-links https://isl-org.github.io/gsplat/whl/gsplat
+    ```
+
 -   **Intel oneAPI Toolkit:** Ensure you have the [Intel oneAPI Toolkit installed](https://www.intel.com/content/www/us/en/developer/articles/guide/installation-guide-for-oneapi-toolkits.html). This provides the necessary compilers and libraries for SYCL development.
 
     **Note:** The OneAPI toolkit version must match the version used to build PyTorch XPU. Check the PyTorch XPU OneAPI version with:
