@@ -5,6 +5,7 @@ from typing import Any, Dict, Union
 import torch
 from torch import Tensor
 
+from gsplat import torch_acc
 from .base import Strategy
 from .ops import inject_noise_to_position, relocate, sample_add
 
@@ -137,7 +138,7 @@ class MCMCStrategy(Strategy):
                     f"Now having {len(params['means'])} GSs."
                 )
 
-            torch.cuda.empty_cache()
+            torch_acc.empty_cache()
 
         # add noise to GSs
         inject_noise_to_position(

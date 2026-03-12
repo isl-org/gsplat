@@ -15,7 +15,7 @@ do
     # train without eval
     CUDA_VISIBLE_DEVICES=0 python simple_trainer_2dgs.py --eval_steps -1 --disable_viewer --data_factor $DATA_FACTOR \
         --model_type 2dgs \
-        --data_dir data/360_v2/$SCENE/ \
+        --data_dir $SCENE_DIR/$SCENE/ \
         --result_dir $RESULT_DIR/$SCENE/
 
     # run eval and render
@@ -23,7 +23,7 @@ do
     do
         CUDA_VISIBLE_DEVICES=0 python simple_trainer_2dgs.py --disable_viewer --data_factor $DATA_FACTOR \
             --model_type 2dgs \
-            --data_dir data/360_v2/$SCENE/ \
+            --data_dir $SCENE_DIR/$SCENE/ \
             --result_dir $RESULT_DIR/$SCENE/ \
             --ckpt $CKPT
     done
@@ -43,7 +43,7 @@ do
 
     echo "=== Train Stats ==="
 
-    for STATS in $RESULT_DIR/$SCENE/stats/train*_rank0.json;
+    for STATS in $RESULT_DIR/$SCENE/stats/train*.json;
     do  
         echo $STATS
         cat $STATS; 

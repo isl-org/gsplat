@@ -4,7 +4,8 @@ from typing import Tuple
 import torch
 from torch import Tensor
 
-from .cuda._wrapper import _make_lazy_cuda_func
+from . import BACKEND
+from ._wrapper import _make_lazy_device_func
 
 
 def compute_relocation(
@@ -43,7 +44,7 @@ def compute_relocation(
     ratios.clamp_(min=1, max=n_max)
     ratios = ratios.int().contiguous()
 
-    new_opacities, new_scales = _make_lazy_cuda_func("relocation")(
+    new_opacities, new_scales = _make_lazy_device_func("relocation")(
         opacities, scales, ratios, binoms, n_max
     )
     return new_opacities, new_scales

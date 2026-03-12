@@ -17,7 +17,7 @@ do
     # "--packed" reduces the data transfer between GPUs, which leads to faster training. 
     CUDA_VISIBLE_DEVICES=0,1,2,3 python simple_trainer.py default --eval_steps 30000 --disable_viewer --data_factor $DATA_FACTOR \
         --steps_scaler 0.25 --packed \
-        --data_dir data/360_v2/$SCENE/ \
+        --data_dir $SCENE_DIR/$SCENE/ \
         --result_dir $RESULT_DIR/$SCENE/
 
 done

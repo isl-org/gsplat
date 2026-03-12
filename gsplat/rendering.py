@@ -7,10 +7,9 @@ import torch.nn.functional as F
 from torch import Tensor
 from typing_extensions import Literal
 
-from .cuda._wrapper import (
+from . import BACKEND
+from ._wrapper import (
     RollingShutterType,
-    FThetaCameraDistortionParameters,
-    FThetaPolynomialType,
     fully_fused_projection,
     fully_fused_projection_2dgs,
     fully_fused_projection_with_ut,
@@ -28,6 +27,81 @@ from .distributed import (
     all_to_all_tensor_list,
 )
 from .utils import depth_to_normal, get_projection_matrix
+
+
+def _compute_view_dirs_packed(
+    means: Tensor,  # [..., N, 3]
+    campos: Tensor,  # [..., C, 3]
+    batch_ids: Tensor,  # [nnz]
+    camera_ids: Tensor,  # [nnz]
+    gaussian_ids: Tensor,  # [nnz]
+    indptr: Tensor,  # [B*C+1]
+    B: int,
+    C: int,
+) -> Tensor:
+    """Compute view directions for packed Gaussian-camera pairs.
+
+    This function computes the view directions (means - campos) for each
+    Gaussian-camera pair in the packed format. It automatically selects between
+    a simple vectorized approach or an optimized loop-based approach based on
+    the data size and whether campos requires gradients.
+
+    Args:
+        means: The 3D centers of the Gaussians. [..., N, 3]
+        campos: Camera positions in world coordinates [..., C, 3]
+        batch_ids: The batch indices of the projected Gaussians. Int32 tensor of shape [nnz].
+        camera_ids: The camera indices of the projected Gaussians. Int32 tensor of shape [nnz].
+        gaussian_ids: The column indices of the projected Gaussians. Int32 tensor of shape [nnz].
+        indptr: CSR-style index pointer into gaussian_ids for batch-camera pairs. Int32 tensor of shape [B*C+1].
+        B: Number of batches
+        C: Number of cameras
+
+    Returns:
+        dirs: View directions [nnz, 3]
+    """
+    N = means.shape[-2]
+    nnz = batch_ids.shape[0]
+    device = means.device
+    means_flat = means.view(B, N, 3)
+    campos_flat = campos.view(B, C, 3)
+
+    if B * C == 1:
+        # Single batch-camera pair. No indexed lookup for campos is needed.
+        dirs = means_flat[0, gaussian_ids] - campos_flat[0, 0]  # [nnz, 3]
+    else:
+        avg_means_per_camera = nnz / (B * C)
+        split_batch_camera_ops = (
+            avg_means_per_camera > 10000
+            and not campos_flat.is_cpu
+            and campos_flat.requires_grad
+        )
+
+        if not split_batch_camera_ops:
+            # Simple vectorized indexing for campos.
+            dirs = (
+                means_flat[batch_ids, gaussian_ids] - campos_flat[batch_ids, camera_ids]
+            )  # [nnz, 3]
+        else:
+            # For large N with pose optimization: split into B*C separate operations
+            # to avoid many-to-one indexing of campos in backward pass. This speeds up the
+            # backwards pass and is more impactful when GPU occupancy is high.
+            dirs = torch.empty((nnz, 3), dtype=means_flat.dtype, device=device)
+            indptr_cpu = indptr.cpu()
+            for b_idx in range(B):
+                for c_idx in range(C):
+                    bc_idx = b_idx * C + c_idx
+                    start_idx = indptr_cpu[bc_idx].item()
+                    end_idx = indptr_cpu[bc_idx + 1].item()
+                    if start_idx == end_idx:
+                        continue
+
+                    # Get the gaussian indices for this batch-camera pair and compute dirs
+                    gids = gaussian_ids[start_idx:end_idx]
+                    dirs[start_idx:end_idx] = (
+                        means_flat[b_idx, gids] - campos_flat[b_idx, c_idx]
+                    )
+
+    return dirs
 
 
 def rasterization(
@@ -63,7 +137,7 @@ def rasterization(
     radial_coeffs: Optional[Tensor] = None,  # [..., C, 6] or [..., C, 4]
     tangential_coeffs: Optional[Tensor] = None,  # [..., C, 2]
     thin_prism_coeffs: Optional[Tensor] = None,  # [..., C, 4]
-    ftheta_coeffs: Optional[FThetaCameraDistortionParameters] = None,
+    ftheta_coeffs=None,
     # rolling shutter
     rolling_shutter: RollingShutterType = RollingShutterType.GLOBAL,
     viewmats_rs: Optional[Tensor] = None,  # [..., C, 4, 4]
@@ -432,6 +506,7 @@ def rasterization(
             batch_ids,
             camera_ids,
             gaussian_ids,
+            indptr,
             radii,
             means2d,
             depths,
@@ -446,7 +521,7 @@ def rasterization(
         opacities = torch.broadcast_to(
             opacities[..., None, :], batch_dims + (C, N)
         )  # [..., C, N]
-        batch_ids, camera_ids, gaussian_ids = None, None, None
+        indptr, batch_ids, camera_ids, gaussian_ids = None, None, None, None
         image_ids = None
 
     if compensations is not None:
@@ -493,10 +568,17 @@ def rasterization(
             campos_rs = torch.inverse(viewmats_rs)[..., :3, 3]
             campos = 0.5 * (campos + campos_rs)  # [..., C, 3]
         if packed:
-            dirs = (
-                means.view(B, N, 3)[batch_ids, gaussian_ids]
-                - campos.view(B, C, 3)[batch_ids, camera_ids]
+            dirs = _compute_view_dirs_packed(
+                means,
+                campos,
+                batch_ids,
+                camera_ids,
+                gaussian_ids,
+                indptr,
+                B,
+                C,
             )  # [nnz, 3]
+
             masks = (radii > 0).all(dim=-1)  # [nnz]
             if colors.dim() == num_batch_dims + 3:
                 # Turn [..., N, K, 3] into [nnz, 3]
@@ -540,7 +622,7 @@ def rasterization(
             (radii,) = all_to_all_tensor_list(
                 world_size, [radii], cnts, output_splits=collected_splits
             )
-            (means2d, depths, conics, opacities, colors) = all_to_all_tensor_list(
+            means2d, depths, conics, opacities, colors = all_to_all_tensor_list(
                 world_size,
                 [means2d, depths, conics, opacities, colors],
                 cnts,
@@ -568,7 +650,7 @@ def rasterization(
             gaussian_ids = gaussian_ids + offsets
 
             # all to all communication across all ranks.
-            (camera_ids, gaussian_ids) = all_to_all_tensor_list(
+            camera_ids, gaussian_ids = all_to_all_tensor_list(
                 world_size,
                 [camera_ids, gaussian_ids],
                 cnts,
@@ -592,7 +674,7 @@ def rasterization(
             )
             radii = reshape_view(C, radii, N_world)
 
-            (means2d, depths, conics, opacities, colors) = all_to_all_tensor_list(
+            means2d, depths, conics, opacities, colors = all_to_all_tensor_list(
                 world_size,
                 [
                     means2d.flatten(0, 1),
@@ -795,7 +877,7 @@ def _rasterization(
 
     .. note::
         This function still relies on gsplat's CUDA backend for some computation, but the
-        entire differentiable graph is on of PyTorch (and nerfacc) so could use Pytorch's
+        entire differentiable graph is on PyTorch (and nerfacc) so could use Pytorch's
         autograd for backpropagation.
 
     .. note::
@@ -806,7 +888,7 @@ def _rasterization(
         Compared to rasterization(), this function does not support some arguments such as
         `packed`, `sparse_grad` and `absgrad`.
     """
-    from gsplat.cuda._torch_impl import (
+    from gsplat._torch_impl import (
         _fully_fused_projection,
         _quat_scale_to_covar_preci,
         _rasterize_to_pixels,
@@ -1478,7 +1560,7 @@ def rasterization_2dgs(
         image_ids = None
 
     densify = torch.zeros_like(
-        means2d, dtype=means.dtype, requires_grad=True, device="cuda"
+        means2d, dtype=means.dtype, requires_grad=True, device=means2d.device
     )
     # Identify intersecting tiles
     tile_width = math.ceil(width / float(tile_size))

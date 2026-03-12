@@ -1,6 +1,7 @@
 import pytest
 import torch
 
+import gsplat
 from gsplat.distributed import (
     all_gather_int32,
     all_gather_tensor_list,
@@ -9,9 +10,14 @@ from gsplat.distributed import (
     cli,
 )
 
+requires_backend = pytest.mark.skipif(
+    gsplat.BACKEND not in ("cuda", "sycl"),
+    reason="No CUDA or SYCL XPU backend available",
+)
+
 
 def _main_all_gather_int32(local_rank: int, world_rank: int, world_size: int, _):
-    device = torch.device("cuda", local_rank)
+    device = torch.device(local_rank)
 
     value = world_rank
     collected = all_gather_int32(world_size, value, device=device)
@@ -24,13 +30,13 @@ def _main_all_gather_int32(local_rank: int, world_rank: int, world_size: int, _)
         assert collected[i] == torch.tensor(i, device=device, dtype=torch.int)
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
+@requires_backend
 def test_all_gather_int32():
     cli(_main_all_gather_int32, None, verbose=True)
 
 
 def _main_all_to_all_int32(local_rank: int, world_rank: int, world_size: int, _):
-    device = torch.device("cuda", local_rank)
+    device = torch.device(local_rank)
 
     values = list(range(world_size))
     collected = all_to_all_int32(world_size, values, device=device)
@@ -43,13 +49,13 @@ def _main_all_to_all_int32(local_rank: int, world_rank: int, world_size: int, _)
         assert collected[i] == torch.tensor(world_rank, device=device, dtype=torch.int)
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
+@requires_backend
 def test_all_to_all_int32():
     cli(_main_all_to_all_int32, None, verbose=True)
 
 
 def _main_all_gather_tensor_list(local_rank: int, world_rank: int, world_size: int, _):
-    device = torch.device("cuda", local_rank)
+    device = torch.device(local_rank)
     N = 10
 
     tensor_list = [
@@ -67,13 +73,13 @@ def _main_all_gather_tensor_list(local_rank: int, world_rank: int, world_size: i
         assert torch.equal(tensor, target)
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
+@requires_backend
 def test_all_gather_tensor_list():
     cli(_main_all_gather_tensor_list, None, verbose=True)
 
 
 def _main_all_to_all_tensor_list(local_rank: int, world_rank: int, world_size: int, _):
-    device = torch.device("cuda", local_rank)
+    device = torch.device(local_rank)
     splits = torch.arange(0, world_size, device=device)
     N = splits.sum().item()
 
@@ -102,7 +108,7 @@ def _main_all_to_all_tensor_list(local_rank: int, world_rank: int, world_size: i
         assert torch.equal(tensor, target)
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
+@requires_backend
 def test_all_to_all_tensor_list():
     cli(_main_all_to_all_tensor_list, None, verbose=True)
 

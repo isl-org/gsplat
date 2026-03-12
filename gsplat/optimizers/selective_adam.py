@@ -1,6 +1,6 @@
 import torch
 
-from ..cuda._wrapper import adam
+from .._wrapper import adam
 
 
 class SelectiveAdam(torch.optim.Adam):

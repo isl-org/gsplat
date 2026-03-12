@@ -10,7 +10,7 @@ import tyro
 from PIL import Image
 from torch import Tensor, optim
 
-from gsplat import rasterization, rasterization_2dgs
+from gsplat import torch_acc, rasterization, rasterization_2dgs
 
 
 class SimpleTrainer:
@@ -21,7 +21,7 @@ class SimpleTrainer:
         gt_image: Tensor,
         num_points: int = 2000,
     ):
-        self.device = torch.device("cuda:0")
+        self.device = torch_acc._get_device(0)
         self.gt_image = gt_image.to(device=self.device)
         self.num_points = num_points
 
@@ -117,13 +117,13 @@ class SimpleTrainer:
                 packed=False,
             )[0]
             out_img = renders[0]
-            torch.cuda.synchronize()
+            torch_acc.synchronize()
             times[0] += time.time() - start
             loss = mse_loss(out_img, self.gt_image)
             optimizer.zero_grad()
             start = time.time()
             loss.backward()
-            torch.cuda.synchronize()
+            torch_acc.synchronize()
             times[1] += time.time() - start
             optimizer.step()
             print(f"Iteration {iter + 1}/{iterations}, Loss: {loss.item()}")

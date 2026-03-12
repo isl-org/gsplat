@@ -5,9 +5,9 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from gsplat import quat_scale_to_covar_preci
-from gsplat.relocation import compute_relocation
-from gsplat.utils import normalized_quat_to_rotmat
+from .._wrapper import quat_scale_to_covar_preci
+from ..relocation import compute_relocation
+from ..utils import normalized_quat_to_rotmat
 
 
 @torch.no_grad()

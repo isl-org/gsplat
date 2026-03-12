@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 import torch
 from torch import Tensor
 
-from gsplat.cuda._torch_impl import _quat_scale_to_matrix
+from ._torch_impl import _quat_scale_to_matrix
 
 
 def _fully_fused_projection_2dgs(
@@ -19,7 +19,7 @@ def _fully_fused_projection_2dgs(
     far_plane: float = 1e10,
     eps: float = 0,
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-    """PyTorch implementation of `gsplat.cuda._wrapper.fully_fused_projection_2dgs()`
+    """PyTorch implementation of `gsplat._wrapper.fully_fused_projection_2dgs()`
 
     .. note::
 
@@ -209,7 +209,7 @@ def _rasterize_to_pixels_2dgs(
     backgrounds: Optional[Tensor] = None,  # [..., channels]
     batch_per_iter: int = 100,
 ):
-    """Pytorch implementation of `gsplat.cuda._wrapper.rasterize_to_pixels_2dgs()`.
+    """Pytorch implementation of `gsplat._wrapper.rasterize_to_pixels_2dgs()`.
 
     This function rasterizes 2D Gaussians to pixels in a Pytorch-friendly way. It
     iteratively accumulates the renderings within each batch of Gaussians. The

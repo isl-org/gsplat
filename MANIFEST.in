@@ -1,3 +1,8 @@
 recursive-include gsplat/cuda/csrc *
+recursive-exclude gsplat/cuda/csrc/third_party/glm/doc *
+recursive-exclude gsplat/cuda/csrc/third_party/glm/test *
 recursive-include gsplat/cuda/include *
 include gsplat/cuda/ext.cpp
+recursive-include gsplat/sycl/src *
+recursive-include gsplat/sycl/include *
+include gsplat/sycl/ext.cpp

@@ -4,7 +4,21 @@ import pytest
 import torch
 from typing_extensions import Tuple
 
-device = torch.device("cuda:0")
+import gsplat
+
+if gsplat.BACKEND == "sycl":
+    device = torch.device("xpu:0")
+elif gsplat.BACKEND == "cuda":
+    device = torch.device("cuda:0")
+else:
+    device = torch.device("cpu")
+
+requires_backend = pytest.mark.skipif(
+    gsplat.BACKEND not in ("cuda", "sycl"), reason="No CUDA or SYCL backend available"
+)
+requires_cuda = pytest.mark.skipif(
+    gsplat.BACKEND != "cuda", reason="No CUDA backend available"
+)
 
 
 def expand(data: dict, batch_dims: Tuple[int, ...]):
@@ -22,7 +36,6 @@ def expand(data: dict, batch_dims: Tuple[int, ...]):
 
 
 @pytest.fixture
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
 def test_data():
     C = 3
     N = 1000
@@ -54,11 +67,11 @@ def test_data():
     }
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
+@requires_backend
 @pytest.mark.parametrize("batch_dims", [(), (2,), (1, 2)])
 def test_projection_2dgs(test_data, batch_dims: Tuple[int, ...]):
-    from gsplat.cuda._torch_impl_2dgs import _fully_fused_projection_2dgs
-    from gsplat.cuda._wrapper import fully_fused_projection_2dgs
+    from gsplat._torch_impl_2dgs import _fully_fused_projection_2dgs
+    from gsplat import fully_fused_projection_2dgs
 
     torch.manual_seed(42)
 
@@ -124,13 +137,13 @@ def test_projection_2dgs(test_data, batch_dims: Tuple[int, ...]):
     torch.testing.assert_close(v_means, _v_means, rtol=1e-2, atol=6e-2)
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
+@requires_cuda
 @pytest.mark.parametrize("sparse_grad", [False])
 @pytest.mark.parametrize("batch_dims", [(), (2,), (1, 2)])
 def test_fully_fused_projection_packed_2dgs(
     test_data, sparse_grad: bool, batch_dims: Tuple[int, ...]
 ):
-    from gsplat.cuda._wrapper import fully_fused_projection_2dgs
+    from gsplat._wrapper import fully_fused_projection_2dgs
 
     torch.manual_seed(42)
 
@@ -248,14 +261,14 @@ def test_fully_fused_projection_packed_2dgs(
     torch.testing.assert_close(v_quats, _v_quats, rtol=1e-2, atol=1e-2)
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
+@requires_backend
 @pytest.mark.parametrize("channels", [3, 31])
 @pytest.mark.parametrize("batch_dims", [(), (2,), (1, 2)])
 def test_rasterize_to_pixels_2dgs(
     test_data, channels: int, batch_dims: Tuple[int, ...]
 ):
-    from gsplat.cuda._torch_impl_2dgs import _rasterize_to_pixels_2dgs
-    from gsplat.cuda._wrapper import (
+    from gsplat._torch_impl_2dgs import _rasterize_to_pixels_2dgs
+    from gsplat import (
         fully_fused_projection_2dgs,
         isect_offset_encode,
         isect_tiles,
@@ -327,19 +340,20 @@ def test_rasterize_to_pixels_2dgs(
         distloss=True,
     )
 
-    _render_colors, _render_alphas, _render_normals = _rasterize_to_pixels_2dgs(
-        means2d,
-        ray_transforms,
-        colors,
-        normals,
-        opacities,
-        width,
-        height,
-        tile_size,
-        isect_offsets,
-        flatten_ids,
-        backgrounds=backgrounds,
-    )
+    if gsplat.BACKEND != "sycl":  # nerfacc required for comparison
+        _render_colors, _render_alphas, _render_normals = _rasterize_to_pixels_2dgs(
+            means2d,
+            ray_transforms,
+            colors,
+            normals,
+            opacities,
+            width,
+            height,
+            tile_size,
+            isect_offsets,
+            flatten_ids,
+            backgrounds=backgrounds,
+        )
 
     v_render_colors = torch.rand_like(render_colors)
     v_render_alphas = torch.rand_like(render_alphas)
@@ -359,31 +373,34 @@ def test_rasterize_to_pixels_2dgs(
         (means2d, ray_transforms, colors, opacities, backgrounds, normals),
     )
 
-    (
-        _v_means2d,
-        _v_ray_transforms,
-        _v_colors,
-        _v_opacities,
-        _v_backgrounds,
-        _v_normals,
-    ) = torch.autograd.grad(
-        (_render_colors * v_render_colors).sum()
-        + (_render_alphas * v_render_alphas).sum()
-        + (_render_normals * v_render_normals).sum(),
-        (means2d, ray_transforms, colors, opacities, backgrounds, normals),
-    )
+    if gsplat.BACKEND != "sycl":  # nerfacc required for comparison
+        (
+            _v_means2d,
+            _v_ray_transforms,
+            _v_colors,
+            _v_opacities,
+            _v_backgrounds,
+            _v_normals,
+        ) = torch.autograd.grad(
+            (_render_colors * v_render_colors).sum()
+            + (_render_alphas * v_render_alphas).sum()
+            + (_render_normals * v_render_normals).sum(),
+            (means2d, ray_transforms, colors, opacities, backgrounds, normals),
+        )
 
-    # assert close forward
-    torch.testing.assert_close(render_colors, _render_colors, atol=1e-3, rtol=1e-3)
-    torch.testing.assert_close(render_alphas, _render_alphas, atol=1e-3, rtol=1e-3)
-    torch.testing.assert_close(render_normals, _render_normals, atol=1e-3, rtol=1e-3)
+        # assert close forward
+        torch.testing.assert_close(render_colors, _render_colors, atol=1e-3, rtol=1e-3)
+        torch.testing.assert_close(render_alphas, _render_alphas, atol=1e-3, rtol=1e-3)
+        torch.testing.assert_close(
+            render_normals, _render_normals, atol=1e-3, rtol=1e-3
+        )
 
-    # assert close backward
-    torch.testing.assert_close(v_means2d, _v_means2d, rtol=1e-3, atol=1e-3)
-    torch.testing.assert_close(
-        v_ray_transforms, _v_ray_transforms, rtol=2e-1, atol=5e-2
-    )
-    torch.testing.assert_close(v_colors, _v_colors, rtol=1e-3, atol=1e-3)
-    torch.testing.assert_close(v_opacities, _v_opacities, rtol=1e-3, atol=1e-3)
-    torch.testing.assert_close(v_backgrounds, _v_backgrounds, rtol=1e-5, atol=1e-5)
-    torch.testing.assert_close(v_normals, _v_normals, rtol=1e-3, atol=1e-3)
+        # assert close backward
+        torch.testing.assert_close(v_means2d, _v_means2d, rtol=1e-3, atol=1e-3)
+        torch.testing.assert_close(
+            v_ray_transforms, _v_ray_transforms, rtol=2e-1, atol=5e-2
+        )
+        torch.testing.assert_close(v_colors, _v_colors, rtol=1e-3, atol=1e-3)
+        torch.testing.assert_close(v_opacities, _v_opacities, rtol=1e-3, atol=1e-3)
+        torch.testing.assert_close(v_backgrounds, _v_backgrounds, rtol=1e-5, atol=1e-5)
+        torch.testing.assert_close(v_normals, _v_normals, rtol=1e-3, atol=1e-3)

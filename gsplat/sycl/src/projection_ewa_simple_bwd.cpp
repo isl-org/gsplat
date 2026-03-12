@@ -1,0 +1,66 @@
+#include <c10/xpu/XPUStream.h>
+
+#include "Common.h"
+#include "Ops.h"
+#include "kernels/ProjBwdKernel.hpp"
+
+namespace gsplat::xpu {
+
+std::tuple<at::Tensor, at::Tensor> projection_ewa_simple_bwd(
+    const at::Tensor means,  // [..., C, N, 3]
+    const at::Tensor covars, // [..., C, N, 3, 3]
+    const at::Tensor Ks,     // [..., C, 3, 3]
+    const uint32_t width,
+    const uint32_t height,
+    const CameraModelType camera_model,
+    const at::Tensor v_means2d, // [..., C, N, 2]
+    const at::Tensor v_covars2d // [..., C, N, 2, 2]
+) {
+    DEVICE_GUARD(means);
+    CHECK_INPUT(means);
+    CHECK_INPUT2(covars, means);
+    CHECK_INPUT2(Ks, means);
+    CHECK_INPUT2(v_means2d, means);
+    CHECK_INPUT2(v_covars2d, means);
+
+    const uint32_t C = means.size(-3);
+    const uint32_t N = means.size(-2);
+    const uint32_t total_gaussians = means.numel() / 3;
+
+    at::Tensor v_means = at::empty_like(means);
+    at::Tensor v_covars = at::empty_like(covars);
+
+    if (total_gaussians > 0) {
+        auto &d_queue = at::xpu::getCurrentXPUStream().queue();
+
+        size_t numWorkGrps =
+            (total_gaussians + GSPLAT_N_THREADS - 1) / GSPLAT_N_THREADS;
+
+        sycl::range<1> localRange(GSPLAT_N_THREADS);
+        sycl::range<1> globalRange(GSPLAT_N_THREADS * numWorkGrps);
+        sycl::nd_range<1> range(globalRange, localRange);
+
+        auto e = d_queue.submit([&](sycl::handler &cgh) {
+            ProjBwdKernel<float> kernel(
+                C,
+                N,
+                means.data_ptr<float>(),
+                covars.data_ptr<float>(),
+                Ks.data_ptr<float>(),
+                width,
+                height,
+                camera_model,
+                v_means2d.data_ptr<float>(),
+                v_covars2d.data_ptr<float>(),
+                v_means.data_ptr<float>(),
+                v_covars.data_ptr<float>()
+            );
+            cgh.parallel_for(range, kernel);
+        });
+        e.wait();
+    }
+
+    return std::make_tuple(v_means, v_covars);
+}
+
+} // namespace gsplat::xpu
